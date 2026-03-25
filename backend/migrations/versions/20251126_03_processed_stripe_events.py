@@ -2,8 +2,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = "20251126_03_processed_stripe_events"
-down_revision = "20251126_02_tenant_stripe_customer"
+revision = "20251126_03_stripe_events"
+down_revision = "20251126_02_tenant_customer"
 branch_labels = None
 depends_on = None
 

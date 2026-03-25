@@ -3,7 +3,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = "20251126_04_usage_daily"
-down_revision = "20251126_03_processed_stripe_events"
+down_revision = "20251126_03_stripe_events"
 branch_labels = None
 depends_on = None
 
