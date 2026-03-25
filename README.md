@@ -197,11 +197,24 @@ Render configuration is included in [render.yaml](render.yaml).
 Recommended public-demo setup:
 
 - backend on Render using Postgres
-- frontend on Render or another static host
+- frontend on Vercel with the `frontend/` directory as the project root
 - `BILLING_MODE=mock`
 - `ENABLE_DEV_ENDPOINTS=false`
 - real `SECRET_KEY`
 - correct `VITE_API_BASE_URL` and `ALLOWED_ORIGINS`
+
+Frontend-on-Vercel checklist:
+
+- import the repo and set the Vercel project root to `frontend`
+- build command: `npm run build`
+- output directory: `dist`
+- environment variable: `VITE_API_BASE_URL=https://meterstack.onrender.com`
+- keep [frontend/vercel.json](frontend/vercel.json) so SPA routes rewrite to `index.html`
+
+After Vercel gives you the frontend URL, update the Render backend env vars:
+
+- `FRONTEND_BASE_URL=https://<your-vercel-url>`
+- `ALLOWED_ORIGINS=https://<your-vercel-url>`
 
 Use Stripe test mode locally when you want to demo checkout and webhook handling with real Stripe objects.
 
