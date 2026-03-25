@@ -123,10 +123,33 @@ The sample client in [sample-client](sample-client) demonstrates exactly that pa
 
 ## Testing And Verification
 
-Backend:
+CI runs four isolated checks so failures are easier to diagnose:
+
+- backend install smoke
+- backend pytest
+- backend Postgres migration smoke
+- frontend lint + build
+
+Local equivalents:
+
+Backend install smoke:
+
+```bash
+python -m pip install -e backend
+```
+
+Backend tests:
 
 ```bash
 pytest -q backend/tests
+```
+
+Backend migration smoke:
+
+```bash
+cd backend
+DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/meterstack alembic -c alembic.ini upgrade head
+DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/meterstack alembic -c alembic.ini current
 ```
 
 Frontend:
