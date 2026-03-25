@@ -9,9 +9,16 @@ depends_on = None
 
 
 def upgrade() -> None:
-    user_role = sa.Enum("owner", "admin", "member", name="user_role")
-    billing_interval = sa.Enum("monthly", "yearly", name="billing_interval")
-    subscription_status = sa.Enum("active", "past_due", "canceled", "trialing", name="subscription_status")
+    user_role = postgresql.ENUM("owner", "admin", "member", name="user_role", create_type=False)
+    billing_interval = postgresql.ENUM("monthly", "yearly", name="billing_interval", create_type=False)
+    subscription_status = postgresql.ENUM(
+        "active",
+        "past_due",
+        "canceled",
+        "trialing",
+        name="subscription_status",
+        create_type=False,
+    )
 
     user_role.create(op.get_bind(), checkfirst=True)
     billing_interval.create(op.get_bind(), checkfirst=True)

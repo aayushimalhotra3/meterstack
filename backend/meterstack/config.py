@@ -31,3 +31,7 @@ ALLOWED_ORIGINS = _parse_csv(os.getenv("ALLOWED_ORIGINS")) or [
     "http://127.0.0.1:5173",
 ]
 ENABLE_DEV_ENDPOINTS = _parse_bool("ENABLE_DEV_ENDPOINTS", default=False)
+
+
+def get_billing_mode() -> str:
+    return os.getenv("BILLING_MODE", BILLING_MODE)

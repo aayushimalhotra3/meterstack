@@ -20,6 +20,7 @@ from meterstack.models import (
     UsageDaily,
     ApiKey,
 )
+from conftest import reset_test_db
 
 
 def _auth_headers(token: str) -> dict:
@@ -27,8 +28,7 @@ def _auth_headers(token: str) -> dict:
 
 
 def _reset_db() -> None:
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    reset_test_db()
 
 
 def test_signup_to_subscription():

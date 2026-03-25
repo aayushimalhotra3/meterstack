@@ -7,14 +7,12 @@ os.environ["ENABLE_DEV_ENDPOINTS"] = "true"
 os.environ["BILLING_MODE"] = "mock"
 
 from meterstack.main import app  # noqa: E402
-from meterstack.database import engine  # noqa: E402
-from meterstack.models import Base  # noqa: E402
 import meterstack.dependencies as deps  # noqa: E402
+from conftest import reset_test_db  # noqa: E402
 
 
 def _reset_db() -> None:
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    reset_test_db()
 
 
 def test_cors_allows_frontend_origin():

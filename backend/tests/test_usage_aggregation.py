@@ -5,14 +5,13 @@ from sqlalchemy.orm import Session
 os.environ["DATABASE_URL"] = "sqlite:///./test_suite.db"
 
 from meterstack.database import SessionLocal  # noqa: E402
-from meterstack.models import Base, Tenant, UsageEvent, UsageDaily  # noqa: E402
+from meterstack.models import Tenant, UsageEvent, UsageDaily  # noqa: E402
 from meterstack.jobs.usage_rollup import rebuild_daily_usage_for_range  # noqa: E402
-from meterstack.database import engine  # noqa: E402
+from conftest import reset_test_db  # noqa: E402
 
 
 def test_usage_rollup_totals():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    reset_test_db()
     db: Session = SessionLocal()
     try:
         t = Tenant(name="UsageCo")

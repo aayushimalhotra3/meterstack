@@ -8,7 +8,7 @@ os.environ["ENABLE_DEV_ENDPOINTS"] = "true"
 
 from meterstack.main import app  # noqa: E402
 from meterstack.database import SessionLocal, engine  # noqa: E402
-from meterstack.models import Base  # noqa: E402
+from conftest import reset_test_db  # noqa: E402
 
 
 async def _auth_token(client: AsyncClient) -> str:
@@ -18,8 +18,7 @@ async def _auth_token(client: AsyncClient) -> str:
 
 @pytest.mark.asyncio
 async def test_entitlements_flow():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    reset_test_db()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         await client.post("/entitlements/admin/seed")
         token = await _auth_token(client)

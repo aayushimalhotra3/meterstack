@@ -10,7 +10,7 @@ os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test"
 from meterstack.main import app  # noqa: E402
 from meterstack.database import SessionLocal, engine  # noqa: E402
 from meterstack.models import Tenant, Plan, Subscription, ProcessedStripeEvent, BillingInterval, SubscriptionStatus  # noqa: E402
-from meterstack.models import Base  # noqa: E402
+from conftest import reset_test_db  # noqa: E402
 
 
 class _StubStripe:
@@ -38,8 +38,7 @@ class _StubStripe:
 @pytest.mark.asyncio
 async def test_webhook_idempotency(monkeypatch):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
+        reset_test_db()
         db: Session = SessionLocal()
         try:
             t = Tenant(name="HookCo")
@@ -55,7 +54,7 @@ async def test_webhook_idempotency(monkeypatch):
 
         from meterstack import routes_billing as rb
         monkeypatch.setattr(rb, "get_stripe", lambda: _StubStripe())
-        monkeypatch.setattr(rb, "BILLING_MODE", "stripe")
+        monkeypatch.setenv("BILLING_MODE", "stripe")
 
         payload = b"{}"
         h = {"Stripe-Signature": "sig_test"}

@@ -6,7 +6,7 @@ import uuid
 from .dependencies import get_db, get_current_user, get_current_tenant, ensure_dev_endpoints_enabled
 from .models import Plan, Tenant, User, UserRole, Subscription, SubscriptionStatus, ProcessedStripeEvent, BillingInterval
 from .billing.stripe_client import get_stripe
-from .config import FRONTEND_BASE_URL, STRIPE_WEBHOOK_SECRET, BILLING_MODE
+from .config import FRONTEND_BASE_URL, STRIPE_WEBHOOK_SECRET, get_billing_mode
 from .observability import log_json
 
 router = APIRouter(prefix="/billing")
@@ -35,7 +35,7 @@ def create_checkout_session(body: CheckoutRequest, user: User = Depends(get_curr
     plan = db.query(Plan).filter(Plan.id == plan_uuid).first()
     if not plan:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
-    if BILLING_MODE == "mock":
+    if get_billing_mode() == "mock":
         from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
         sub = db.query(Subscription).filter(Subscription.tenant_id == tenant.id).first()
@@ -116,7 +116,7 @@ def list_plans(tenant: Tenant = Depends(get_current_tenant), db: Session = Depen
 
 @router.post("/webhook")
 async def webhook(request: Request, db: Session = Depends(get_db)):
-    if BILLING_MODE == "mock":
+    if get_billing_mode() == "mock":
         return {"ok": True}
     payload = await request.body()
     sig = request.headers.get("Stripe-Signature")
