@@ -1,10 +1,16 @@
+import os
 from fastapi.testclient import TestClient
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+os.environ["DATABASE_URL"] = "sqlite:///./test_suite.db"
+os.environ["ENABLE_DEV_ENDPOINTS"] = "true"
+os.environ["BILLING_MODE"] = "mock"
+
 from meterstack.main import app
-from meterstack.database import SessionLocal
+from meterstack.database import SessionLocal, engine
 from meterstack.models import (
+    Base,
     Tenant,
     User,
     Plan,
@@ -20,12 +26,18 @@ def _auth_headers(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _reset_db() -> None:
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+
 def test_signup_to_subscription():
+    _reset_db()
     with TestClient(app) as client:
         email = f"it_{uuid4()}@example.com"
         r = client.post(
             "/auth/signup",
-            json={"tenant_name": "Acme Co", "email": email, "password": "Passw0rd!"},
+            json={"tenant_name": f"Acme Co {uuid4()}", "email": email, "password": "Passw0rd!"},
         )
         assert r.status_code == 200
         token = r.json()["access_token"]
@@ -63,11 +75,12 @@ def test_signup_to_subscription():
 
 
 def test_quota_enforcement_end_to_end():
+    _reset_db()
     with TestClient(app) as client:
         email = f"qe_{uuid4()}@example.com"
         r = client.post(
             "/auth/signup",
-            json={"tenant_name": "Qe Co", "email": email, "password": "Passw0rd!"},
+            json={"tenant_name": f"Qe Co {uuid4()}", "email": email, "password": "Passw0rd!"},
         )
         token = r.json()["access_token"]
 
@@ -120,11 +133,12 @@ def test_quota_enforcement_end_to_end():
 
 
 def test_api_key_flow_and_rate_limit():
+    _reset_db()
     with TestClient(app) as client:
         email = f"ak_{uuid4()}@example.com"
         r = client.post(
             "/auth/signup",
-            json={"tenant_name": "Ak Co", "email": email, "password": "Passw0rd!"},
+            json={"tenant_name": f"Ak Co {uuid4()}", "email": email, "password": "Passw0rd!"},
         )
         token = r.json()["access_token"]
 
@@ -195,3 +209,92 @@ def test_api_key_flow_and_rate_limit():
             )
             codes.append(resp.status_code)
         assert 429 in codes
+
+
+def test_billing_plans_and_mock_checkout_flow():
+    _reset_db()
+    with TestClient(app) as client:
+        seed = client.post("/entitlements/admin/seed")
+        assert seed.status_code == 200
+
+        email = f"billing_{uuid4()}@example.com"
+        signup = client.post(
+            "/auth/signup",
+            json={"tenant_name": f"Billing Co {uuid4()}", "email": email, "password": "Passw0rd!"},
+        )
+        token = signup.json()["access_token"]
+        headers = _auth_headers(token)
+
+        plans = client.get("/billing/plans", headers=headers)
+        assert plans.status_code == 200
+        plan_rows = plans.json()
+        assert {plan["name"] for plan in plan_rows} >= {"Starter", "Pro"}
+
+        pro_plan = next(plan for plan in plan_rows if plan["name"] == "Pro")
+        checkout = client.post(
+            "/billing/create-checkout-session",
+            headers=headers,
+            json={"plan_id": pro_plan["id"]},
+        )
+        assert checkout.status_code == 200
+        assert checkout.json()["url"].endswith("/billing/mock-success")
+
+        subscription = client.get("/billing/subscription", headers=headers)
+        assert subscription.status_code == 200
+        assert subscription.json()["plan"]["name"] == "Pro"
+        refreshed_plans = client.get("/billing/plans", headers=headers).json()
+        assert any(plan["name"] == "Pro" and plan["is_current"] for plan in refreshed_plans)
+
+
+def test_usage_events_refresh_analytics_immediately():
+    _reset_db()
+    with TestClient(app) as client:
+        client.post("/entitlements/admin/seed")
+        email = f"usage_{uuid4()}@example.com"
+        signup = client.post(
+            "/auth/signup",
+            json={"tenant_name": f"Usage Co {uuid4()}", "email": email, "password": "Passw0rd!"},
+        )
+        token = signup.json()["access_token"]
+        headers = _auth_headers(token)
+        client.post("/billing/admin/dev-subscribe", headers=headers, json={"plan_name": "Starter"})
+
+        usage = client.post(
+            "/usage/events",
+            headers=headers,
+            json={"feature_key": "api_calls_per_month", "amount": 25},
+        )
+        assert usage.status_code == 200
+
+        summary = client.get("/analytics/summary", headers=headers)
+        assert summary.status_code == 200
+        totals = {row["feature_key"]: row["total_amount"] for row in summary.json()["usage"]}
+        assert totals["api_calls_per_month"] == 25
+
+
+def test_api_key_revoke_blocks_client_access():
+    _reset_db()
+    with TestClient(app) as client:
+        client.post("/entitlements/admin/seed")
+        email = f"revoke_{uuid4()}@example.com"
+        signup = client.post(
+            "/auth/signup",
+            json={"tenant_name": f"Revoke Co {uuid4()}", "email": email, "password": "Passw0rd!"},
+        )
+        token = signup.json()["access_token"]
+        headers = _auth_headers(token)
+        client.post("/billing/admin/dev-subscribe", headers=headers, json={"plan_name": "Starter"})
+
+        created = client.post("/api-keys", headers=headers, json={"name": "Worker"})
+        api_key = created.json()["api_key"]
+        key_id = created.json()["id"]
+
+        revoke = client.post(f"/api-keys/{key_id}/revoke", headers=headers)
+        assert revoke.status_code == 200
+
+        denied = client.post(
+            "/client/usage/events",
+            headers={"X-Api-Key": api_key},
+            json={"feature_key": "api_calls_per_month", "amount": 1},
+        )
+        assert denied.status_code == 401

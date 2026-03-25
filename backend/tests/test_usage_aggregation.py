@@ -2,7 +2,7 @@ import os
 from datetime import datetime, date, timedelta
 from sqlalchemy.orm import Session
 
-os.environ["DATABASE_URL"] = "sqlite:///./test_usage.db"
+os.environ["DATABASE_URL"] = "sqlite:///./test_suite.db"
 
 from meterstack.database import SessionLocal  # noqa: E402
 from meterstack.models import Base, Tenant, UsageEvent, UsageDaily  # noqa: E402

@@ -1,6 +1,7 @@
 import uuid
 import enum
 from sqlalchemy import (
+    CHAR,
     Column,
     String,
     Integer,
@@ -11,12 +12,37 @@ from sqlalchemy import (
     Enum,
     UniqueConstraint,
     Index,
+    TypeDecorator,
 )
 from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from datetime import datetime, timezone
 
 Base = declarative_base()
+
+
+class GUID(TypeDecorator):
+    impl = CHAR
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(PGUUID(as_uuid=True))
+        return dialect.type_descriptor(CHAR(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        if not isinstance(value, uuid.UUID):
+            value = uuid.UUID(str(value))
+        if dialect.name == "postgresql":
+            return value
+        return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None or isinstance(value, uuid.UUID):
+            return value
+        return uuid.UUID(str(value))
 
 
 class UserRole(str, enum.Enum):
@@ -40,7 +66,7 @@ class SubscriptionStatus(str, enum.Enum):
 class Tenant(Base):
     __tablename__ = "tenants"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False, unique=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     stripe_customer_id = Column(String(255), nullable=True)
@@ -51,8 +77,8 @@ class Tenant(Base):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     email = Column(String(255), nullable=False, unique=True)
     hashed_password = Column(String(255), nullable=False)
     role = Column(Enum(UserRole, name="user_role"), nullable=False)
@@ -68,7 +94,7 @@ class User(Base):
 class Plan(Base):
     __tablename__ = "plans"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False, unique=True)
     stripe_product_id = Column(String(255), nullable=True)
     stripe_price_id = Column(String(255), nullable=True)
@@ -80,7 +106,7 @@ class Plan(Base):
 class Feature(Base):
     __tablename__ = "features"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     key = Column(String(255), nullable=False, unique=True)
     name = Column(String(255), nullable=False)
     description = Column(String(1024), nullable=True)
@@ -89,9 +115,9 @@ class Feature(Base):
 class PlanFeature(Base):
     __tablename__ = "plan_features"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id", ondelete="CASCADE"), nullable=False)
-    feature_id = Column(UUID(as_uuid=True), ForeignKey("features.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    plan_id = Column(GUID(), ForeignKey("plans.id", ondelete="CASCADE"), nullable=False)
+    feature_id = Column(GUID(), ForeignKey("features.id", ondelete="CASCADE"), nullable=False)
     limit_value = Column(Integer, nullable=True)
 
     __table_args__ = (
@@ -104,9 +130,9 @@ class PlanFeature(Base):
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    plan_id = Column(UUID(as_uuid=True), ForeignKey("plans.id", ondelete="RESTRICT"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    plan_id = Column(GUID(), ForeignKey("plans.id", ondelete="RESTRICT"), nullable=False)
     stripe_subscription_id = Column(String(255), nullable=True)
     status = Column(Enum(SubscriptionStatus, name="subscription_status"), nullable=False)
     current_period_start = Column(DateTime(timezone=True), nullable=False)
@@ -123,9 +149,9 @@ class Subscription(Base):
 class UsageEvent(Base):
     __tablename__ = "usage_events"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(GUID(), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     feature_key = Column(String(255), nullable=False)
     amount = Column(Integer, nullable=False, default=1)
     occurred_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -141,7 +167,7 @@ class UsageEvent(Base):
 class ProcessedStripeEvent(Base):
     __tablename__ = "processed_stripe_events"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     event_id = Column(String(255), nullable=False, unique=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
@@ -149,9 +175,9 @@ class ProcessedStripeEvent(Base):
 class UsageDaily(Base):
     __tablename__ = "usage_daily"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     date = Column(Date, nullable=False)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     feature_key = Column(String(255), nullable=False)
     total_amount = Column(Integer, nullable=False)
 
@@ -165,8 +191,8 @@ class UsageDaily(Base):
 class ApiKey(Base):
     __tablename__ = "api_keys"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(GUID(), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(255), nullable=False)
     key_hash = Column(String(255), nullable=False)
     key_prefix = Column(String(64), nullable=False)

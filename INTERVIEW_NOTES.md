@@ -1,40 +1,50 @@
-# Interview Prep Notes
+# Interview Notes
 
-## What is MeterStack?
+## What Is MeterStack?
 
-- Multi-tenant backend for subscriptions, entitlements, usage, and analytics.
-- Stripe integration with checkout and webhooks (idempotent processing).
-- Quota enforcement using entitlements + usage aggregation.
-- API-key client endpoints for service-to-service integration and demo client.
+MeterStack is a backend-heavy SaaS infrastructure project that handles:
 
-## Data Model Design
+- tenant-scoped auth
+- subscription state
+- plan entitlements and quota checks
+- usage metering and daily aggregation
+- analytics for the current billing period
+- API keys for backend-to-backend integrations
 
-- Tenants and Users: Separation enables org-level scoping with per-user roles.
-- PlanFeature: Explicit relational mapping instead of JSON for queryability and limits.
-- UsageEvent + UsageDaily: Raw events for precision; daily aggregates for analytics performance.
-- Subscriptions: Link tenants to plans with status and current billing period.
+There is a React UI on top so the backend is visibly usable, but the project’s center of gravity is still backend systems design.
 
-## Stripe Webhooks and Idempotency
+## Strong Talking Points
 
-- ProcessedStripeEvent table keyed by webhook event ID.
-- One logical transaction per event update; safe replays return early.
-- Missing mappings (tenant/plan) logged and ignored to avoid incorrect state.
+- The domain model is relational and queryable, not hidden in JSON blobs.
+- Quota checks use the current billing period plus aggregated usage, not ad hoc counters.
+- Usage writes update the aggregate table immediately, but rebuild tooling still exists for repair and backfill.
+- Stripe webhook handling is idempotent through processed-event tracking.
+- The project supports both human auth and service auth.
+- Public demo mode is intentionally frictionless through mock billing, while Stripe test mode stays available locally.
 
-## Entitlements and Quota Enforcement
+## Why It Is Not “Just CRUD”
 
-- Check plan includes feature; read limit.
-- Resolve current billing period; sum UsageDaily totals for feature.
-- Compare against limit; return allowed/remaining or specific reason (e.g., quota_exceeded).
+- Multi-tenant boundaries matter throughout the whole app
+- There is real commercial plan logic
+- There is write-path aggregation, not just reads
+- The client integration pattern models real product usage
+- The deployment story, tests, and docs are part of the project
 
-## What would you improve next?
+## Tradeoffs To Explain Clearly
 
-- Metered billing with Stripe usage-based prices.
-- Stronger rate limiting (token bucket per key + burst capacity) and abuse monitoring.
-- Enhanced multitenancy isolation (RLS, per-tenant schemas, or connection routing).
-- Horizontally scale workers for rollups and add async ingestion for high-volume usage.
+- Public demo uses mock billing because portfolio review should be frictionless
+- SQLite is the fastest local path, but Postgres is the intended deployed database
+- UsageDaily is updated synchronously for freshness; a queue-backed pipeline would be the next scale step
+- Rate limiting is intentionally lightweight for now
 
-## LinkedIn Featured Snippet
+## “What Would You Improve Next?”
 
-Headline: MeterStack – Multi-tenant SaaS billing and usage analytics backend
+- metered Stripe billing rather than fixed subscription-only plans
+- async ingestion for very high usage volume
+- stronger observability and external metrics/log sinks
+- tenant isolation hardening such as RLS
+- invite flows and deeper workspace administration
 
-Built a backend platform that manages multi-tenant subscriptions, entitlements, and feature usage for SaaS apps. The service integrates with Stripe for subscription lifecycle via webhooks, caches subscription state in Postgres, and exposes APIs for entitlement and quota checks. Client apps send usage events which aggregate into daily tables for analytics and dashboards. Includes API key auth for service-to-service calls, background jobs for rollups, and a React dashboard for tenant owners.
+## One-Sentence Resume Version
+
+Built a multi-tenant SaaS infrastructure platform with FastAPI and React that manages subscriptions, entitlements, usage metering, analytics, and API-key integrations, including idempotent Stripe webhook handling and a deployable product demo.

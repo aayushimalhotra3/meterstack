@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -6,6 +7,7 @@ from .database import engine
 from .models import Base, Tenant, User, UserRole
 from .dependencies import get_db, get_current_user, get_current_tenant
 from .auth import hash_password, verify_password, create_access_token
+from .config import ALLOWED_ORIGINS
 from .routes_billing import router as billing_router
 from .routes_entitlements import router as entitlements_router
 from .routes_usage import router as usage_router
@@ -28,6 +30,14 @@ async def _lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=_lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(billing_router)
 app.include_router(entitlements_router)

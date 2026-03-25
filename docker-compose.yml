@@ -6,7 +6,13 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg2://postgres:postgres@db:5432/meterstack
       - REDIS_URL=redis://redis:6379/0
-      - STRIPE_SECRET_KEY=
+      - STRIPE_API_KEY=
+      - STRIPE_WEBHOOK_SECRET=
+      - FRONTEND_BASE_URL=http://localhost:5173
+      - BILLING_MODE=mock
+      - SECRET_KEY=local-dev-secret
+      - ENABLE_DEV_ENDPOINTS=true
+      - ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
     depends_on:
       - db
       - redis

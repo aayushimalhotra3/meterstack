@@ -3,10 +3,12 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.orm import Session
 
-os.environ["DATABASE_URL"] = "sqlite:///./test_entitlements.db"
+os.environ["DATABASE_URL"] = "sqlite:///./test_suite.db"
+os.environ["ENABLE_DEV_ENDPOINTS"] = "true"
 
 from meterstack.main import app  # noqa: E402
-from meterstack.database import SessionLocal  # noqa: E402
+from meterstack.database import SessionLocal, engine  # noqa: E402
+from meterstack.models import Base  # noqa: E402
 
 
 async def _auth_token(client: AsyncClient) -> str:
@@ -16,6 +18,8 @@ async def _auth_token(client: AsyncClient) -> str:
 
 @pytest.mark.asyncio
 async def test_entitlements_flow():
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         await client.post("/entitlements/admin/seed")
         token = await _auth_token(client)

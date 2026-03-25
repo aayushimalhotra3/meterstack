@@ -4,11 +4,12 @@ import secrets
 from datetime import datetime
 
 from .dependencies import get_db, get_current_user, get_current_tenant, get_tenant_from_api_key, rate_limit
-from .models import ApiKey, UserRole, Tenant, UsageEvent, Feature
+from .models import ApiKey, UserRole, Tenant, Feature
 from .auth import hash_password
 from .services.entitlements import check_entitlement_with_usage
 from .schemas.usage import UsageEventCreate
 from .schemas.entitlements import QuotaCheckRequest, QuotaCheckResponse
+from .services.usage import record_usage_event
 
 router = APIRouter(prefix="/api-keys")
 client_router = APIRouter(prefix="/client")
@@ -85,12 +86,14 @@ def client_create_usage_event(body: UsageEventCreate, enforce_quota: bool = Fals
         qr = check_entitlement_with_usage(db, tenant.id, body.feature_key, body.amount or 1)
         if not qr.get("allowed"):
             raise HTTPException(status_code=422, detail={"reason": qr.get("reason"), "limit_value": qr.get("limit_value"), "current_usage": qr.get("current_usage"), "remaining": qr.get("remaining")})
-    from datetime import timezone
-    occurred = body.occurred_at or datetime.now(timezone.utc)
-    ev = UsageEvent(tenant_id=tenant.id, user_id=None, feature_key=body.feature_key, amount=body.amount or 1, occurred_at=occurred)
-    db.add(ev)
-    db.commit()
-    db.refresh(ev)
+    ev = record_usage_event(
+        db,
+        tenant_id=tenant.id,
+        user_id=None,
+        feature_key=body.feature_key,
+        amount=body.amount or 1,
+        occurred_at=body.occurred_at,
+    )
     return {"id": str(ev.id)}
 
 

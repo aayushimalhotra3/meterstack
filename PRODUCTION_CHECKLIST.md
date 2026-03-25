@@ -1,50 +1,56 @@
-# MeterStack Production Readiness Checklist
+# MeterStack Production Checklist
 
-Documented for MeterStack v1.0.0
+This project is meant to be publicly demoable first and production-flavored second. The list below is the minimum bar for a credible hosted deployment.
 
-## Runtime and Hosting
-- Hosting: Render (blueprint in `render.yaml`).
-- Services:
-  - `meterstack-backend` (web service from Dockerfile).
-  - `meterstack-postgres` (managed Postgres).
-  - `meterstack-frontend` (static build served via Node).
-- Required environment variables:
-  - `DATABASE_URL`: Render Postgres connection string.
-  - `BILLING_MODE`: `mock` for public demo, `stripe` for real billing.
-  - `FRONTEND_BASE_URL`: Deployed frontend base URL for redirects.
-  - `SECRET_KEY`: JWT signing secret.
-  - Optional: `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET` for Stripe mode.
-  - Optional: `RATE_LIMIT_PER_MIN` to tune client endpoint limits.
+## Runtime
 
-## Security
-- JWT secret (`SECRET_KEY`) stored in environment, never committed.
-- API keys hashed using bcrypt; only prefixes stored for lookup.
-- Rate limiting enforced on `/client` endpoints per API key and path.
-- No secrets or `.env` files committed; root `.gitignore` ignores env files.
+- Backend deployed with Postgres, not SQLite
+- Frontend built with `VITE_API_BASE_URL` pointing at the deployed backend
+- `SECRET_KEY` set to a strong value
+- `ALLOWED_ORIGINS` includes the deployed frontend URL
+- `BILLING_MODE=mock` for the public portfolio demo
+- `ENABLE_DEV_ENDPOINTS=false`
 
-## Data and Reliability
-- Migrations: Alembic migrations applied on container startup (`alembic upgrade head`).
-- Webhook idempotency: `ProcessedStripeEvent` table keyed by Stripe event id.
-- Rollups: daily aggregates are rebuildable; jobs can re-run safely.
-- If webhooks temporarily fail: Stripe retries; events recorded only once.
+## Optional Stripe Test Mode
 
-## Monitoring and Alerts (Lightweight)
-- Metrics: request latency and counts via `/metrics` module.
-- Health: `/health` endpoint returns `{ ok: true }`.
-- Logs: JSON logs written to stdout; integrate with Render logs or external logging.
-- Uptime: Configure Render health checks or external ping service.
+If you want local or private-review Stripe behavior:
 
-## Known Limitations and Next Steps
-- Single region deployment; no multi-region failover.
-- Basic rate limiting; no adaptive or behavioral detection.
-- Mock billing mode by default; real metered billing not implemented.
-- Background processing via simple jobs; workers not horizontally scaled yet.
-- No per-tenant schema or RLS isolation in Postgres (exploration planned).
+- `BILLING_MODE=stripe`
+- `STRIPE_API_KEY` set
+- `STRIPE_WEBHOOK_SECRET` set
+- plans seeded with Stripe price IDs or created via the admin seed helper in local dev
 
-## Deployment Steps
-1. Create services from `render.yaml`.
-2. Set env vars on backend service.
-3. Deploy backend; migrations run on startup.
-4. Run demo seed against cloud DB: `python -m meterstack.demo_seed`.
-5. Deploy frontend; set `VITE_API_BASE_URL` to backend URL; confirm UI.
-6. Smoke test `/health`, login, dashboard, usage charts, API keys.
+Do not require Stripe for the public demo path.
+
+## Data Prep
+
+- Run migrations: `alembic -c backend/alembic.ini upgrade head`
+- Run demo seed: `python -m meterstack.demo_seed`
+- Confirm the demo owner can log in
+- Confirm Starter and Pro plans exist
+
+## Smoke Test Before Sharing
+
+- signup works for a brand-new tenant
+- demo login works
+- billing page loads plans
+- mock plan switch updates the subscription
+- dashboard shows current billing period
+- usage page renders a timeseries
+- API keys page can create and revoke a key
+- sample client or curl flow updates analytics
+- `/health` returns `{ "ok": true }`
+
+## Public Demo Guardrails
+
+- keep seeded demo data believable but non-sensitive
+- do not expose dev-only endpoints publicly
+- keep rate limiting enabled for `/client/*`
+- use mock billing on the public URL to prevent reviewer friction
+
+## Nice-To-Have Later
+
+- dedicated worker for repair/backfill jobs
+- richer observability sink beyond in-memory metrics
+- stronger API key rate limiting or abuse monitoring
+- per-tenant isolation enhancements such as RLS or schema isolation

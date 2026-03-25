@@ -31,7 +31,11 @@ def summary(start_date: Optional[date] = None, end_date: Optional[date] = None, 
             raise HTTPException(status_code=400, detail="no_active_subscription")
         start_date, end_date = period
     data = get_tenant_usage_summary(db, tenant.id, start_date, end_date)
-    return {"period_start": start_date.isoformat(), "period_end": end_date.isoformat(), "usage": [UsageSummary(**d).dict() for d in data]}
+    return {
+        "period_start": start_date.isoformat(),
+        "period_end": end_date.isoformat(),
+        "usage": [UsageSummary(**d).model_dump() for d in data],
+    }
 
 
 @router.get("/timeseries")
@@ -54,7 +58,7 @@ def timeseries(feature_key: str, start_date: Optional[date] = None, end_date: Op
         "feature_key": feature_key,
         "period_start": start_date.isoformat(),
         "period_end": end_date.isoformat(),
-        "points": [UsagePoint(**p).dict() for p in points],
+        "points": [UsagePoint(**p).model_dump() for p in points],
     }
 
 

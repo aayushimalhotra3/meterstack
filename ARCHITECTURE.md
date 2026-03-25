@@ -1,46 +1,112 @@
-# Architecture
+# MeterStack Architecture
 
-Documented for MeterStack v1.0.0
+MeterStack is a multi-tenant SaaS infrastructure backend with a thin product UI on top. Its purpose is to centralize plan state, entitlement logic, usage metering, and analytics for customer-facing SaaS apps.
 
-## Overview
+## System Shape
 
-MeterStack is a multi-tenant backend for subscriptions, entitlements, usage tracking, and analytics. It integrates with Stripe for billing and exposes API-key protected client endpoints for service-to-service integrations.
+```mermaid
+flowchart TD
+    U["Tenant owner / admin"] --> FE["React dashboard"]
+    FE --> API["FastAPI application"]
+    API --> DB["Postgres or SQLite"]
+    API --> STRIPE["Stripe checkout + webhooks"]
+    CLIENT["Customer backend / worker"] --> APIKEY["API key routes"]
+    APIKEY --> API
+    API --> USAGE["UsageEvent + UsageDaily"]
+    API --> SUBS["Plan + Subscription state"]
+    API --> ENT["Entitlement + quota service"]
+    USAGE --> ANALYTICS["Analytics summary + timeseries"]
+    ANALYTICS --> FE
+```
 
-## Domain Model
+## Core Domain
 
-- Tenant: Organization owning users and subscriptions.
-- User: Login identity scoped to a tenant with a role.
-- Plan: Subscription plan with pricing and interval.
-- Feature: Named capability a plan may include with limits.
-- PlanFeature: Plan-to-feature mapping with optional limit value.
-- Subscription: Active or trialing subscription linking a tenant to a plan and period.
-- UsageEvent: Raw usage events (feature_key, amount, occurred_at).
-- UsageDaily: Daily aggregated totals per feature per tenant.
-- ApiKey: Hashed API key for service-to-service auth with prefix for lookup.
-- ProcessedStripeEvent: Records processed webhook event IDs for idempotency.
+- `Tenant`: organization boundary for all app data
+- `User`: tenant-scoped identity with owner/admin/member roles
+- `Plan`: commercial plan with interval and price
+- `Feature`: named capability used for gating or limits
+- `PlanFeature`: plan-to-feature mapping with optional numeric limit
+- `Subscription`: current plan state for a tenant
+- `UsageEvent`: raw usage write for auditability and rebuilds
+- `UsageDaily`: daily aggregate used for analytics and quota math
+- `ApiKey`: hashed service credential for backend-to-backend calls
+- `ProcessedStripeEvent`: webhook dedupe table for idempotency
 
-Relationships: Tenants have Users and Subscriptions; Plans map to Features via PlanFeature; UsageEvent aggregates to UsageDaily; ApiKey associates to Tenant.
+## Request Flows
 
-## Key Flows
+### 1. Auth
 
-- Signup/Login: Create tenant + owner user on signup; login returns JWT with user/tenant claims.
-- Stripe Checkout/Webhooks: Checkout creates sessions; webhooks update Subscription based on Stripe events; idempotency via ProcessedStripeEvent.
-- Entitlements/Quota: Check if feature is allowed by plan; compute current period; sum UsageDaily; compare against limit and return remaining.
-- Usage Recording/Aggregation: Record UsageEvent on user action; rollup job aggregates into UsageDaily per day.
-- Analytics/Dashboard: Summary and timeseries endpoints feed frontend charts for period ranges.
-- API Keys: Client services call quota check and usage endpoints using `X-Api-Key` for tenant scoping.
+`/auth/signup` creates a tenant and owner user.
 
-## Technical Choices
+`/auth/login` returns a JWT with user and tenant claims.
 
-- FastAPI + Postgres: Modern Python API stack with strong typing and SQLAlchemy ORM.
-- Background Jobs: Simple rollups in-process; ready to move to RQ/Celery for scheduled processing.
-- Idempotent Webhooks: Event ID record prevents duplicate processing; cautious mapping when plan/tenant missing.
-- API Keys: Bcrypt hashes with prefix lookup; raw keys never stored; single return at creation.
-- Rate Limiting: Basic per-API-key limiter to mitigate burst abuse on client routes.
+`/me` resolves the current tenant-scoped session.
 
-## Tradeoffs and Future Work
+### 2. Billing
 
-- Single DB vs sharding: Single database simplifies operations; future could isolate per-tenant schemas or RLS.
-- Queues: Redis + RQ sufficient for demos; production could adopt Celery or cloud queues.
-- Rollups: Nightly or hourly jobs reduce write load; near real-time aggregation increases freshness at cost of resources.
-- Usage-based Billing: Extend to Stripe metered prices for true usage billing.
+`/billing/plans` lists available plans and marks the tenant’s current one.
+
+`/billing/create-checkout-session` either:
+
+- returns a Stripe checkout URL in `stripe` mode, or
+- updates the local subscription immediately in `mock` mode.
+
+`/billing/webhook` consumes Stripe events and uses `ProcessedStripeEvent` to prevent duplicate work.
+
+### 3. Entitlements And Quotas
+
+Entitlements are derived from the active subscription’s plan.
+
+Quota checks:
+
+1. resolve the active subscription
+2. find the requested feature in `PlanFeature`
+3. compute the current billing period
+4. sum `UsageDaily` for that feature
+5. compare projected usage against the limit
+
+### 4. Usage Ingestion
+
+Both owner-auth routes and API-key routes record usage through the same flow:
+
+1. validate the feature exists
+2. optionally enforce quota
+3. write a `UsageEvent`
+4. update the matching `UsageDaily` row in the same request
+
+The rebuild job remains available for repair and backfill scenarios.
+
+### 5. Analytics
+
+`/analytics/summary` returns totals per feature for the current billing period.
+
+`/analytics/timeseries` returns day-by-day totals for a single feature.
+
+These endpoints power the dashboard and usage chart views.
+
+## Deployment Model
+
+- Local default: SQLite for a fast zero-infra demo path
+- CI / deployed target: Postgres
+- Public demo mode: `BILLING_MODE=mock`
+- Local Stripe work: `BILLING_MODE=stripe` with test keys and webhook secret
+
+## Operational Choices
+
+- Dev-only operational helpers are gated behind `ENABLE_DEV_ENDPOINTS`
+- CORS is explicit through `ALLOWED_ORIGINS`
+- API keys are hashed and only revealed once
+- Rate limiting is enforced on `/client/*`
+- Docker and Render configs stay close to the real deployment story
+
+## Why This Project Reads Well In Interviews
+
+MeterStack shows more than CRUD:
+
+- clear multi-tenant boundaries
+- auth plus service-to-service auth
+- commercial plan modeling
+- entitlement and quota logic
+- event ingestion with aggregate maintenance
+- webhook idempotency
+- deployable product surface, not just APIs

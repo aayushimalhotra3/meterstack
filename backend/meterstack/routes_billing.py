@@ -3,8 +3,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import uuid
 
-from .dependencies import get_db, get_current_user, get_current_tenant
-from .models import Plan, Tenant, User, UserRole, Subscription, SubscriptionStatus, ProcessedStripeEvent
+from .dependencies import get_db, get_current_user, get_current_tenant, ensure_dev_endpoints_enabled
+from .models import Plan, Tenant, User, UserRole, Subscription, SubscriptionStatus, ProcessedStripeEvent, BillingInterval
 from .billing.stripe_client import get_stripe
 from .config import FRONTEND_BASE_URL, STRIPE_WEBHOOK_SECRET, BILLING_MODE
 from .observability import log_json
@@ -16,6 +16,15 @@ class CheckoutRequest(BaseModel):
     plan_id: str
 
 
+class PlanResponse(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+    billing_interval: BillingInterval
+    base_price_cents: int
+    is_current: bool
+
+
 @router.post("/create-checkout-session")
 def create_checkout_session(body: CheckoutRequest, user: User = Depends(get_current_user), tenant: Tenant = Depends(get_current_tenant), db: Session = Depends(get_db)):
     try:
@@ -24,6 +33,8 @@ def create_checkout_session(body: CheckoutRequest, user: User = Depends(get_curr
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid plan id")
 
     plan = db.query(Plan).filter(Plan.id == plan_uuid).first()
+    if not plan:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
     if BILLING_MODE == "mock":
         from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
@@ -75,6 +86,32 @@ def create_checkout_session(body: CheckoutRequest, user: User = Depends(get_curr
         cancel_url=cancel_url,
     )
     return {"url": session.get("url")}
+
+
+@router.get("/plans", response_model=list[PlanResponse])
+def list_plans(tenant: Tenant = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    current_sub = (
+        db.query(Subscription)
+        .filter(
+            Subscription.tenant_id == tenant.id,
+            Subscription.status.in_([SubscriptionStatus.active, SubscriptionStatus.trialing]),
+        )
+        .order_by(Subscription.current_period_start.desc())
+        .first()
+    )
+    current_plan_id = current_sub.plan_id if current_sub else None
+    plans = db.query(Plan).order_by(Plan.base_price_cents.asc(), Plan.name.asc()).all()
+    return [
+        PlanResponse(
+            id=str(plan.id),
+            name=plan.name,
+            description=plan.description,
+            billing_interval=plan.billing_interval,
+            base_price_cents=plan.base_price_cents,
+            is_current=plan.id == current_plan_id,
+        )
+        for plan in plans
+    ]
 
 
 @router.post("/webhook")
@@ -180,7 +217,13 @@ async def webhook(request: Request, db: Session = Depends(get_db)):
 def get_subscription(tenant: Tenant = Depends(get_current_tenant), db: Session = Depends(get_db)):
     sub = db.query(Subscription).filter(Subscription.tenant_id == tenant.id).order_by(Subscription.current_period_start.desc()).first()
     if not sub:
-        return {"subscription": None}
+        return {
+            "plan": None,
+            "status": None,
+            "current_period_start": None,
+            "current_period_end": None,
+            "cancel_at_period_end": False,
+        }
     plan = db.query(Plan).filter(Plan.id == sub.plan_id).first()
     return {
         "plan": {"name": plan.name if plan else None, "description": plan.description if plan else None},
@@ -197,6 +240,7 @@ class SeedPlansRequest(BaseModel):
 
 @router.post("/admin/seed-plans")
 def seed_plans(db: Session = Depends(get_db)):
+    ensure_dev_endpoints_enabled()
     s = get_stripe()
     if not s.api_key:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Stripe not configured")
@@ -219,6 +263,7 @@ class DevSubscribeRequest(BaseModel):
 
 @router.post("/admin/dev-subscribe")
 def dev_subscribe(body: DevSubscribeRequest, tenant: Tenant = Depends(get_current_tenant), db: Session = Depends(get_db)):
+    ensure_dev_endpoints_enabled()
     plan = db.query(Plan).filter(Plan.name == body.plan_name).first()
     if not plan:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Plan not found")

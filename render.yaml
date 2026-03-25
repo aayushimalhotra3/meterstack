@@ -21,6 +21,10 @@ services:
         sync: false
       - key: RATE_LIMIT_PER_MIN
         sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: ENABLE_DEV_ENDPOINTS
+        value: "false"
   - type: web
     name: meterstack-frontend
     env: node
@@ -28,5 +32,8 @@ services:
     buildCommand: cd frontend && npm ci && npm run build
     startCommand: npx serve -s frontend/dist -l 10000
     autoDeploy: true
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
 databases:
   - name: meterstack-postgres

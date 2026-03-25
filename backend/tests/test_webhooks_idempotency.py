@@ -4,7 +4,7 @@ from httpx import AsyncClient, ASGITransport
 import pytest
 from sqlalchemy.orm import Session
 
-os.environ["DATABASE_URL"] = "sqlite:///./test_webhooks.db"
+os.environ["DATABASE_URL"] = "sqlite:///./test_suite.db"
 os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test"
 
 from meterstack.main import app  # noqa: E402
@@ -55,6 +55,7 @@ async def test_webhook_idempotency(monkeypatch):
 
         from meterstack import routes_billing as rb
         monkeypatch.setattr(rb, "get_stripe", lambda: _StubStripe())
+        monkeypatch.setattr(rb, "BILLING_MODE", "stripe")
 
         payload = b"{}"
         h = {"Stripe-Signature": "sig_test"}

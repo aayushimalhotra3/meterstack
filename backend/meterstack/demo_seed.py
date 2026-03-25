@@ -1,11 +1,13 @@
 import uuid
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal, engine
-from .models import Tenant, User, UserRole, Plan, BillingInterval, Feature, PlanFeature, Subscription, SubscriptionStatus, UsageEvent
+from .models import ApiKey, Tenant, User, UserRole, Plan, BillingInterval, Feature, PlanFeature, Subscription, SubscriptionStatus, UsageEvent
 from .auth import hash_password
 from .jobs.usage_rollup import rebuild_daily_usage_for_range
+
+DEMO_API_KEY = "meterstack_demo_backend_key_2026"
 
 
 def _get_or_create_tenant_and_owner(db: Session) -> tuple[Tenant, User]:
@@ -25,12 +27,22 @@ def _get_or_create_tenant_and_owner(db: Session) -> tuple[Tenant, User]:
 def _get_or_create_plans_features(db: Session) -> tuple[Plan, Plan]:
     starter = db.query(Plan).filter(Plan.name == "Starter").first()
     if not starter:
-        starter = Plan(name="Starter", description="Starter", billing_interval=BillingInterval.monthly, base_price_cents=1000)
+        starter = Plan(
+            name="Starter",
+            description="For early teams validating product-market fit with light monthly usage.",
+            billing_interval=BillingInterval.monthly,
+            base_price_cents=0,
+        )
         db.add(starter)
         db.flush()
     pro = db.query(Plan).filter(Plan.name == "Pro").first()
     if not pro:
-        pro = Plan(name="Pro", description="Pro", billing_interval=BillingInterval.monthly, base_price_cents=3000)
+        pro = Plan(
+            name="Pro",
+            description="For growing SaaS teams that need higher volume, richer reports, and production integrations.",
+            billing_interval=BillingInterval.monthly,
+            base_price_cents=2900,
+        )
         db.add(pro)
         db.flush()
 
@@ -66,7 +78,7 @@ def _get_or_create_plans_features(db: Session) -> tuple[Plan, Plan]:
 
 
 def _ensure_active_subscription(db: Session, tenant: Tenant, plan: Plan) -> None:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     sub = db.query(Subscription).filter(Subscription.tenant_id == tenant.id).first()
     if sub:
         sub.plan_id = plan.id
@@ -91,7 +103,7 @@ def _ensure_active_subscription(db: Session, tenant: Tenant, plan: Plan) -> None
 
 
 def _generate_usage(db: Session, tenant: Tenant) -> None:
-    end_date = datetime.utcnow().date()
+    end_date = datetime.now(timezone.utc).date()
     start_date = end_date - timedelta(days=29)
     db.query(UsageEvent).filter(UsageEvent.tenant_id == tenant.id, UsageEvent.occurred_at >= datetime.combine(start_date, datetime.min.time()), UsageEvent.occurred_at <= datetime.combine(end_date, datetime.max.time())).delete()
     db.commit()
@@ -113,6 +125,32 @@ def _generate_usage(db: Session, tenant: Tenant) -> None:
     rebuild_daily_usage_for_range(db, start_date, end_date)
 
 
+def _ensure_demo_api_keys(db: Session, tenant: Tenant) -> None:
+    keys = {
+        "Production backend": (DEMO_API_KEY, True, datetime.now(timezone.utc) - timedelta(hours=3)),
+        "Old staging worker": ("meterstack_demo_staging_key_2026", False, datetime.now(timezone.utc) - timedelta(days=20)),
+    }
+    for name, (raw_key, active, last_used_at) in keys.items():
+        rec = db.query(ApiKey).filter(ApiKey.tenant_id == tenant.id, ApiKey.name == name).first()
+        if not rec:
+            rec = ApiKey(
+                tenant_id=tenant.id,
+                name=name,
+                key_hash=hash_password(raw_key),
+                key_prefix=raw_key[:12],
+                active=active,
+                last_used_at=last_used_at,
+            )
+            db.add(rec)
+        else:
+            rec.key_hash = hash_password(raw_key)
+            rec.key_prefix = raw_key[:12]
+            rec.active = active
+            rec.last_used_at = last_used_at
+            db.add(rec)
+    db.commit()
+
+
 def main() -> None:
     db: Session = SessionLocal()
     try:
@@ -125,6 +163,7 @@ def main() -> None:
         _, pro = _get_or_create_plans_features(db)
         _ensure_active_subscription(db, t, pro)
         _generate_usage(db, t)
+        _ensure_demo_api_keys(db, t)
     finally:
         db.close()
 

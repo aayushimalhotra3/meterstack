@@ -26,18 +26,18 @@ def rebuild_daily_usage_for_range(db: Session, start_date: date, end_date: date)
         for e in events:
             key = (e.tenant_id, e.feature_key)
             totals[key] += e.amount
+        existing_rows = db.query(UsageDaily).filter(UsageDaily.date == cur).all()
+        existing_map = {(row.tenant_id, row.feature_key): row for row in existing_rows}
         for (tenant_id, feature_key), total in totals.items():
-            row = (
-                db.query(UsageDaily)
-                .filter(UsageDaily.date == cur, UsageDaily.tenant_id == tenant_id, UsageDaily.feature_key == feature_key)
-                .first()
-            )
+            row = existing_map.pop((tenant_id, feature_key), None)
             if row:
                 row.total_amount = total
                 db.add(row)
             else:
                 db.add(UsageDaily(date=cur, tenant_id=tenant_id, feature_key=feature_key, total_amount=total))
             updated += 1
+        for stale_row in existing_map.values():
+            db.delete(stale_row)
         db.commit()
         log_json({"level": "info", "message": "usage_daily_commit", "date": cur.isoformat(), "updated": updated})
         cur = cur + timedelta(days=1)

@@ -1,66 +1,109 @@
 import './App.css'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Navbar from './components/Navbar'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Suspense, lazy, type ReactNode } from 'react'
 import ProtectedRoute from './components/ProtectedRoute'
-import LoginPage from './pages/LoginPage'
-import SignupPage from './pages/SignupPage'
-import DashboardPage from './pages/DashboardPage'
-import UsagePage from './pages/UsagePage'
-import BillingPage from './pages/BillingPage'
-import EntitlementsPage from './pages/EntitlementsPage'
+import AppShell from './components/AppShell'
+import { useAuth } from './hooks/useAuth'
+
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const SignupPage = lazy(() => import('./pages/SignupPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const UsagePage = lazy(() => import('./pages/UsagePage'))
+const BillingPage = lazy(() => import('./pages/BillingPage'))
+const EntitlementsPage = lazy(() => import('./pages/EntitlementsPage'))
+const ApiKeysPage = lazy(() => import('./pages/ApiKeysPage'))
+const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage'))
+const BillingCancelPage = lazy(() => import('./pages/BillingCancelPage'))
+const BillingMockSuccessPage = lazy(() => import('./pages/BillingMockSuccessPage'))
+
+function ProtectedPage({ children }: { children: ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <AppShell>{children}</AppShell>
+    </ProtectedRoute>
+  )
+}
+
+function LandingPage() {
+  const { accessToken } = useAuth()
+  return <Navigate to={accessToken ? '/dashboard' : '/login'} replace />
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <div>
-                <Navbar />
+      <Suspense fallback={<div className="page-loading">Loading page...</div>}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedPage>
                 <DashboardPage />
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/usage"
-          element={
-            <ProtectedRoute>
-              <div>
-                <Navbar />
+              </ProtectedPage>
+            }
+          />
+          <Route
+            path="/usage"
+            element={
+              <ProtectedPage>
                 <UsagePage />
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/billing"
-          element={
-            <ProtectedRoute>
-              <div>
-                <Navbar />
+              </ProtectedPage>
+            }
+          />
+          <Route
+            path="/billing"
+            element={
+              <ProtectedPage>
                 <BillingPage />
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/entitlements"
-          element={
-            <ProtectedRoute>
-              <div>
-                <Navbar />
+              </ProtectedPage>
+            }
+          />
+          <Route
+            path="/billing/success"
+            element={
+              <ProtectedPage>
+                <BillingSuccessPage />
+              </ProtectedPage>
+            }
+          />
+          <Route
+            path="/billing/cancel"
+            element={
+              <ProtectedPage>
+                <BillingCancelPage />
+              </ProtectedPage>
+            }
+          />
+          <Route
+            path="/billing/mock-success"
+            element={
+              <ProtectedPage>
+                <BillingMockSuccessPage />
+              </ProtectedPage>
+            }
+          />
+          <Route
+            path="/api-keys"
+            element={
+              <ProtectedPage>
+                <ApiKeysPage />
+              </ProtectedPage>
+            }
+          />
+          <Route
+            path="/entitlements"
+            element={
+              <ProtectedPage>
                 <EntitlementsPage />
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route path="*" element={<LoginPage />} />
-      </Routes>
+              </ProtectedPage>
+            }
+          />
+          <Route path="*" element={<LandingPage />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

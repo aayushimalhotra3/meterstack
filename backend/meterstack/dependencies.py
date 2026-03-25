@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from .database import SessionLocal
 from .auth import decode_access_token, verify_password
 from .models import User, Tenant, ApiKey
-from .config import RATE_LIMIT_PER_MIN
+from .config import RATE_LIMIT_PER_MIN, ENABLE_DEV_ENDPOINTS
 import time
 
 
@@ -83,3 +83,8 @@ def rate_limit(request: Request, x_api_key: str | None = Header(default=None, al
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="rate_limit_exceeded")
     buf.append(now)
     _rl_store[key] = buf
+
+
+def ensure_dev_endpoints_enabled() -> None:
+    if not ENABLE_DEV_ENDPOINTS:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="not_found")

@@ -1,29 +1,31 @@
 # Sample Client
 
-Minimal FastAPI service demonstrating MeterStack integration via API key.
+This is a tiny FastAPI service that demonstrates the intended MeterStack integration pattern for backend-to-backend usage tracking.
 
 ## Configure
 
-Set env:
+Create an API key in MeterStack first, then export:
 
-```
+```bash
 export METERSTACK_API_BASE_URL=http://localhost:8000
 export METERSTACK_API_KEY=<raw_api_key>
 ```
 
-Generate an API key in MeterStack as an owner/admin, then export it here.
-
 ## Run
 
-```
+```bash
 uvicorn main:app --reload --port 9000
 ```
 
 ## Try It
 
-```
+```bash
 curl -X POST http://localhost:9000/reports
-curl -X GET http://localhost:9000/status
+curl http://localhost:9000/status
 ```
 
-The client checks quota for `reports_per_month`, blocks when exceeded, and records usage when allowed.
+What it does:
+
+1. checks quota for `reports_per_month`
+2. blocks if the tenant would exceed its plan limit
+3. records usage only when the action is allowed

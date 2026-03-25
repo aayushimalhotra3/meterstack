@@ -1,50 +1,146 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { apiRequest } from '../api/client'
+import { formatCurrencyCents, formatDate } from '../lib/formatters'
 
-type Subscription = { plan?: { name?: string; description?: string }; status?: string; current_period_start?: string; current_period_end?: string; cancel_at_period_end?: boolean }
+type Subscription = {
+  plan?: { name?: string; description?: string }
+  status?: string
+  current_period_start?: string
+  current_period_end?: string
+  cancel_at_period_end?: boolean
+}
+type Plan = {
+  id: string
+  name: string
+  description: string | null
+  billing_interval: 'monthly' | 'yearly'
+  base_price_cents: number
+  is_current: boolean
+}
 
-const STARTER_PLAN_ID = import.meta.env.VITE_STARTER_PLAN_ID || ''
-const PRO_PLAN_ID = import.meta.env.VITE_PRO_PLAN_ID || ''
-
-function PlanCard({ name, desc, price, planId, currentPlanName, onCheckout }: { name: string; desc: string; price: string; planId: string; currentPlanName?: string | null; onCheckout: (planId: string) => void }) {
-  const isCurrent = currentPlanName === name
+function PlanCard({ plan, onCheckout, checkoutLoading }: { plan: Plan; onCheckout: (planId: string) => void; checkoutLoading: boolean }) {
+  const isCurrent = plan.is_current
   return (
-    <div style={{ border: '1px solid #eee', padding: 16 }}>
-      <h4>{name}</h4>
-      <div>{desc}</div>
-      <div style={{ margin: '8px 0' }}>{price}</div>
-      <button disabled={!planId || isCurrent} onClick={() => onCheckout(planId)}>{isCurrent ? 'Current plan' : 'Upgrade'}</button>
-      {!planId && <div style={{ color: '#999', marginTop: 6 }}>Set VITE_STARTER_PLAN_ID / VITE_PRO_PLAN_ID</div>}
-    </div>
+    <article className={`plan-card${isCurrent ? ' plan-card--current' : ''}`}>
+      <div>
+        <div className="plan-card__header">
+          <h3>{plan.name}</h3>
+          {isCurrent ? <span className="badge badge--success">Current</span> : null}
+        </div>
+        <p className="muted">{plan.description || 'Usage-aware SaaS billing plan'}</p>
+      </div>
+      <div className="plan-price">
+        <strong>{formatCurrencyCents(plan.base_price_cents)}</strong>
+        <span>/{plan.billing_interval === 'yearly' ? 'year' : 'month'}</span>
+      </div>
+      <button className="button" disabled={isCurrent || checkoutLoading} onClick={() => onCheckout(plan.id)}>
+        {isCurrent ? 'Current plan' : checkoutLoading ? 'Redirecting...' : 'Choose plan'}
+      </button>
+    </article>
   )
 }
 
 export default function BillingPage() {
   const [sub, setSub] = useState<Subscription | null>(null)
+  const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
   useEffect(() => {
-    apiRequest('/billing/subscription').then(setSub).catch((e) => setError(e.message)).finally(() => setLoading(false))
+    Promise.all([apiRequest<Subscription>('/billing/subscription'), apiRequest<Plan[]>('/billing/plans')])
+      .then(([subscription, planList]) => {
+        setSub(subscription)
+        setPlans(planList)
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false))
   }, [])
 
   async function startCheckout(planId: string) {
-    const res = await apiRequest('/billing/create-checkout-session', { method: 'POST', json: { plan_id: planId } })
-    if (res?.url) window.location.assign(res.url)
+    setCheckoutLoading(true)
+    try {
+      const res = await apiRequest<{ url?: string }>('/billing/create-checkout-session', { method: 'POST', json: { plan_id: planId } })
+      if (res?.url) window.location.assign(res.url)
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Unable to start checkout'
+      setError(message)
+    } finally {
+      setCheckoutLoading(false)
+    }
   }
 
-  const currentPlanName = sub?.plan?.name || null
-
-  if (loading) return <div style={{ padding: 24 }}>Loading...</div>
-  if (error) return <div style={{ padding: 24, color: 'red' }}>{error}</div>
+  if (loading) return <div className="page-loading">Loading billing details...</div>
   return (
-    <div style={{ padding: 24 }}>
-      <h3>Billing</h3>
-      <div style={{ marginBottom: 12 }}>Plan: {sub?.plan?.name || '—'} | Status: {sub?.status || '—'}</div>
-      <div>Period: {sub?.current_period_start} → {sub?.current_period_end}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 24 }}>
-        <PlanCard name="Starter" desc="Starter plan" price="$0/mo" planId={STARTER_PLAN_ID} currentPlanName={currentPlanName} onCheckout={startCheckout} />
-        <PlanCard name="Pro" desc="Pro plan" price="$29/mo" planId={PRO_PLAN_ID} currentPlanName={currentPlanName} onCheckout={startCheckout} />
-      </div>
+    <div className="page-stack">
+      <section className="hero-card">
+        <div>
+          <p className="eyebrow">Step 01 of 04</p>
+          <h1>Plans and billing state</h1>
+          <p className="hero-copy">
+            Start here. Choosing a plan activates the billing period and defines the feature limits the rest of the
+            workspace will use.
+          </p>
+          <div className="hero-actions">
+            <Link className="button button--secondary" to="/entitlements">
+              Next: review entitlements
+            </Link>
+          </div>
+        </div>
+        <div className="hero-meta">
+          <span className="inline-pill">First stop in the setup flow</span>
+          <span className="inline-pill">{sub?.plan?.name ?? 'No plan selected'}</span>
+          <span className="inline-pill">{sub?.status ?? 'No active subscription'}</span>
+        </div>
+      </section>
+
+      {error ? <div className="status-banner status-banner--error">{error}</div> : null}
+
+      <section className="split-grid">
+        <div className="card">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Current subscription</p>
+              <h2>Live status</h2>
+            </div>
+          </div>
+          <div className="detail-list">
+            <div className="detail-row">
+              <span>Plan</span>
+              <strong>{sub?.plan?.name ?? '—'}</strong>
+            </div>
+            <div className="detail-row">
+              <span>Status</span>
+              <strong>{sub?.status ?? '—'}</strong>
+            </div>
+            <div className="detail-row">
+              <span>Period</span>
+              <strong>{sub?.current_period_start ? `${formatDate(sub.current_period_start)} → ${formatDate(sub.current_period_end)}` : '—'}</strong>
+            </div>
+          </div>
+          {sub?.cancel_at_period_end ? (
+            <div className="status-banner status-banner--warning">This plan will cancel at the end of the current period.</div>
+          ) : null}
+        </div>
+
+        <div className="card">
+          <p className="eyebrow">What comes next</p>
+          <h2>Follow the setup path</h2>
+          <ol className="steps">
+            <li>Choose the plan that matches the limits you want to test.</li>
+            <li>Open Entitlements to confirm which features and quotas the plan enables.</li>
+            <li>Create an API key so a backend can check quotas and send usage events.</li>
+            <li>Open Usage to confirm analytics updates as traffic comes in.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section className="plans-grid">
+        {plans.map((plan) => (
+          <PlanCard key={plan.id} plan={plan} onCheckout={startCheckout} checkoutLoading={checkoutLoading} />
+        ))}
+      </section>
+      {plans.length === 0 ? <div className="empty-state">No plans are configured yet.</div> : null}
     </div>
   )
 }

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 import uuid
 
-from .dependencies import get_db, get_current_tenant
+from .dependencies import get_db, get_current_tenant, ensure_dev_endpoints_enabled
 from .services.entitlements import get_tenant_entitlements, check_entitlement, check_entitlement_with_usage
 from .schemas.entitlements import Entitlement, EntitlementCheckRequest, EntitlementCheckResponse, QuotaCheckRequest, QuotaCheckResponse
 from .models import Feature, Plan, PlanFeature, BillingInterval
@@ -45,14 +45,25 @@ def check_quota(body: QuotaCheckRequest, tenant=Depends(get_current_tenant), db:
 @router.post("/admin/seed")
 def seed(db: Session = Depends(get_db)):
     """Seed demo plans and features with reasonable limits for local/dev setups."""
+    ensure_dev_endpoints_enabled()
     starter = db.query(Plan).filter(Plan.name == "Starter").first()
     if not starter:
-        starter = Plan(name="Starter", description="Starter", billing_interval=BillingInterval.monthly, base_price_cents=0)
+        starter = Plan(
+            name="Starter",
+            description="For early teams validating product-market fit with light monthly usage.",
+            billing_interval=BillingInterval.monthly,
+            base_price_cents=0,
+        )
         db.add(starter)
         db.flush()
     pro = db.query(Plan).filter(Plan.name == "Pro").first()
     if not pro:
-        pro = Plan(name="Pro", description="Pro", billing_interval=BillingInterval.monthly, base_price_cents=2900)
+        pro = Plan(
+            name="Pro",
+            description="For growing SaaS teams that need higher volume, richer reports, and production integrations.",
+            billing_interval=BillingInterval.monthly,
+            base_price_cents=2900,
+        )
         db.add(pro)
         db.flush()
 
@@ -79,6 +90,7 @@ def seed(db: Session = Depends(get_db)):
 
     ensure_pf(starter.id, projects.id, 5)
     ensure_pf(starter.id, api_calls.id, 10000)
+    ensure_pf(starter.id, reports.id, 20)
     ensure_pf(pro.id, projects.id, 50)
     ensure_pf(pro.id, api_calls.id, 100000)
     ensure_pf(pro.id, reports.id, None)

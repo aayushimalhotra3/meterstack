@@ -1,41 +1,86 @@
-# MeterStack Demo Script (2–4 minutes)
+# MeterStack Demo Script
 
-## Context (30s)
+## Goal
 
-MeterStack is a multi-tenant SaaS billing and usage analytics backend built with FastAPI, Postgres, Stripe, and React. It manages plans, subscriptions, entitlements, and feature usage for customer apps.
+Show that MeterStack is a believable SaaS control-plane product, not just an API collection.
 
-## Tenant Signup and Login (30–45s)
+Total time: 3-5 minutes.
 
-- Open the Login page.
-- Either log in with demo owner: `demo-owner@meterstack.dev` / `DemoPass123!`, or click Signup and create a new tenant.
-- After login, land on the dashboard.
+## 1. Open With The Problem
 
-## Plan and Subscription (30–45s)
+“MeterStack is a multi-tenant backend for SaaS billing, entitlements, usage metering, analytics, and service-to-service integrations. The main product idea is that customer apps can ask one system: what plan is this tenant on, what are they allowed to do, and how much have they already used?”
 
-- Navigate to Billing.
-- Show current plan and status, with period dates.
-- Mention Stripe integration and that demo can run in mock mode.
-- In Stripe mode, click "Upgrade" to show the Stripe checkout page (no need to complete).
+## 2. Log In
 
-## Usage and Analytics (60–90s)
+Use:
 
-- Go to Dashboard: point out current period dates and usage summary table.
-- Go to Usage page: choose a feature key (e.g., `api_calls_per_month`).
-- Show the daily usage line chart from `UsageDaily` data.
-- Trigger synthetic usage:
-  - Use the load script: `API_BASE_URL=http://localhost:8000 API_KEY=<key> TOTAL=50 python backend/load_test/simulate_usage.py`.
-  - Or call `POST /client/usage/events` with `X-Api-Key`.
-- Refresh the chart and highlight the updated data points.
+- `demo-owner@meterstack.dev`
+- `DemoPass123!`
 
-## Integration and API Keys (30–45s)
+Land on Dashboard and call out:
 
-- Go to API Keys page and show a key named "Production backend".
-- Explain client flow:
-  - Call `POST /client/entitlements/check-quota` for `reports_per_month` before generating a report.
-  - If allowed, call `POST /client/usage/events` to record the action.
-- Mention the sample client in `sample-client/` that demonstrates this pattern.
+- current plan
+- billing period
+- feature usage totals
+- entitlement footprint
 
-## Close (15–30s)
+## 3. Show Billing
 
-- Recap: subscriptions via Stripe or mock, entitlements and quotas, usage aggregation, analytics, API keys for service-to-service.
-- Point to README sections: Quickstart, API Keys Integration, Sample Client.
+Navigate to Billing.
+
+Talk track:
+
+- plans come from the backend, not hardcoded frontend config
+- the public demo runs in `mock` billing mode so reviewers can switch plans instantly
+- the backend still supports Stripe test mode locally for checkout + webhook work
+
+If helpful, switch between Starter and Pro and return to Dashboard.
+
+## 4. Show Usage + Analytics
+
+Open Usage and pick `api_calls_per_month`.
+
+Call out:
+
+- current billing period
+- daily rollup chart
+- total / max / average stats
+
+Explain that writes update `UsageDaily` immediately, so analytics stay fresh without waiting for a repair job.
+
+## 5. Show Entitlements
+
+Open Entitlements and explain:
+
+- each feature is mapped to the active plan
+- limits can be capped or unlimited
+- this is the same data used by quota checks
+
+## 6. Show API Keys
+
+Open API Keys.
+
+Create a key named `Production backend`.
+
+Call out:
+
+- raw key is revealed once
+- stored key is hashed server-side
+- active and revoked keys are tracked with `last_used_at`
+
+## 7. Show The Integration Pattern
+
+Option A: explain verbally from the UI.
+
+Option B: run the sample client flow.
+
+Expected pattern:
+
+1. client calls `/client/entitlements/check-quota`
+2. if allowed, client performs its work
+3. client calls `/client/usage/events`
+4. dashboard analytics reflect the new usage
+
+## 8. Close
+
+“The project is intentionally backend-heavy: auth, subscription state, entitlement logic, metering, aggregation, idempotent webhooks, deploy config, and a small product UI to prove the backend is actually usable.”
