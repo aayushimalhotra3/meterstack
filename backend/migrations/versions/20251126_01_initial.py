@@ -8,7 +8,26 @@ branch_labels = None
 depends_on = None
 
 
+def _create_enum_type(name: str, values: tuple[str, ...]) -> None:
+    enum_values = ", ".join(f"'{value}'" for value in values)
+    op.execute(
+        f"""
+        DO $$
+        BEGIN
+            CREATE TYPE {name} AS ENUM ({enum_values});
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+        END
+        $$;
+        """
+    )
+
+
 def upgrade() -> None:
+    _create_enum_type("user_role", ("owner", "admin", "member"))
+    _create_enum_type("billing_interval", ("monthly", "yearly"))
+    _create_enum_type("subscription_status", ("active", "past_due", "canceled", "trialing"))
+
     user_role = postgresql.ENUM("owner", "admin", "member", name="user_role", create_type=False)
     billing_interval = postgresql.ENUM("monthly", "yearly", name="billing_interval", create_type=False)
     subscription_status = postgresql.ENUM(
@@ -19,10 +38,6 @@ def upgrade() -> None:
         name="subscription_status",
         create_type=False,
     )
-
-    user_role.create(op.get_bind(), checkfirst=True)
-    billing_interval.create(op.get_bind(), checkfirst=True)
-    subscription_status.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "tenants",
@@ -123,6 +138,6 @@ def downgrade() -> None:
 
     op.drop_table("tenants")
 
-    sa.Enum(name="subscription_status").drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name="billing_interval").drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name="user_role").drop(op.get_bind(), checkfirst=True)
+    op.execute("DROP TYPE IF EXISTS subscription_status")
+    op.execute("DROP TYPE IF EXISTS billing_interval")
+    op.execute("DROP TYPE IF EXISTS user_role")
