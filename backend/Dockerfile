@@ -5,4 +5,4 @@ RUN pip install --no-cache-dir -e /app/backend
 WORKDIR /app/backend
 ENV PYTHONPATH=/app/backend
 EXPOSE 8000
-CMD ["sh", "-c", "alembic -c alembic.ini upgrade head && uvicorn meterstack.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic -c alembic.ini upgrade head && python -m meterstack.demo_seed && uvicorn meterstack.main:app --host 0.0.0.0 --port 8000"]
