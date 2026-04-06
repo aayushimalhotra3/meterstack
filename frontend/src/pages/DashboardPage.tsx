@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiRequest } from '../api/client'
-import { formatDate, formatFeatureKey } from '../lib/formatters'
+import { formatCompactNumber, formatDate, formatFeatureKey } from '../lib/formatters'
 import { workflowSteps } from '../lib/workflow'
 
 type UsageRow = { feature_key: string; total_amount: number }
@@ -57,6 +57,12 @@ export default function DashboardPage() {
   }, null)
   const rankedUsage = [...(summary?.usage ?? [])].sort((a, b) => b.total_amount - a.total_amount)
   const usageMax = rankedUsage[0]?.total_amount ?? 1
+  const periodDays = summary
+    ? Math.max(
+        1,
+        Math.round((new Date(summary.period_end).getTime() - new Date(summary.period_start).getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      )
+    : 0
   const primaryAction = !hasPlan
     ? { to: '/billing', label: 'Choose a plan' }
     : totalUsage === 0
@@ -81,17 +87,17 @@ export default function DashboardPage() {
     {
       label: 'Metered volume',
       value: totalUsage.toLocaleString(),
-      meta: 'Units tracked this billing period',
+      meta: periodDays ? `About ${Math.round(totalUsage / periodDays).toLocaleString()} units per day` : 'Units tracked this billing period',
     },
     {
       label: 'Top feature',
       value: topFeature ? formatFeatureKey(topFeature.feature_key) : '—',
-      meta: topFeature ? `${topFeature.total_amount.toLocaleString()} units` : 'No usage yet',
+      meta: topFeature ? `${formatCompactNumber(topFeature.total_amount)} units this period` : 'No usage yet',
     },
     {
-      label: 'Included features',
-      value: entitlements.length.toLocaleString(),
-      meta: 'Plan-backed capability surface',
+      label: 'Active streams',
+      value: rankedUsage.length.toLocaleString(),
+      meta: entitlements.length ? `${entitlements.length.toLocaleString()} plan-backed capabilities` : 'Plan-backed capability surface',
     },
   ]
 
@@ -123,13 +129,19 @@ export default function DashboardPage() {
           <div className="hero-side-panel__details">
             <div>
               <span className="metric-label">Period</span>
-              <strong>
-                {summary ? `${formatDate(summary.period_start)} → ${formatDate(summary.period_end)}` : 'No billing period'}
-              </strong>
+              <strong>{summary ? `${periodDays} day cycle` : 'No billing period'}</strong>
             </div>
             <div>
-              <span className="metric-label">Entitlements</span>
-              <strong>{entitlements.length}</strong>
+              <span className="metric-label">Feature streams</span>
+              <strong>{rankedUsage.length}</strong>
+            </div>
+            <div>
+              <span className="metric-label">Tracked volume</span>
+              <strong>{formatCompactNumber(totalUsage)}</strong>
+            </div>
+            <div>
+              <span className="metric-label">Peak stream</span>
+              <strong>{topFeature ? formatFeatureKey(topFeature.feature_key) : '—'}</strong>
             </div>
           </div>
         </aside>

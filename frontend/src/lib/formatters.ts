@@ -33,3 +33,10 @@ export function formatFeatureKey(value: string) {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 }
+
+export function formatCompactNumber(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    maximumFractionDigits: value >= 1000 ? 1 : 0,
+  }).format(value)
+}

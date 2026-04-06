@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiRequest } from '../api/client'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts'
-import { formatDate, formatFeatureKey } from '../lib/formatters'
+import { formatCompactNumber, formatDate, formatFeatureKey } from '../lib/formatters'
 
 type UsageRow = { feature_key: string; total_amount: number }
 type Point = { date: string; total_amount: number }
@@ -25,7 +25,10 @@ export default function UsagePage() {
 
   useEffect(() => {
     async function load() {
-      if (!featureKey) return
+      if (!featureKey) {
+        setPoints([])
+        return
+      }
       setLoading(true)
       setError(null)
       try {
@@ -45,8 +48,17 @@ export default function UsagePage() {
     const total = points.reduce((acc, p) => acc + p.total_amount, 0)
     const max = points.reduce((acc, p) => Math.max(acc, p.total_amount), 0)
     const avg = points.length ? Math.round(total / points.length) : 0
-    return { total, max, avg }
+    const recentSevenDays = points.slice(-7).reduce((acc, p) => acc + p.total_amount, 0)
+    const peakPoint = points.reduce<Point | null>((leader, point) => {
+      if (!leader || point.total_amount > leader.total_amount) return point
+      return leader
+    }, null)
+    return { total, max, avg, recentSevenDays, peakPoint }
   }, [points])
+  const rankedUsage = useMemo(() => [...(summary?.usage ?? [])].sort((a, b) => b.total_amount - a.total_amount), [summary])
+  const selectedUsage = rankedUsage.find((row) => row.feature_key === featureKey) ?? null
+  const tenantTotal = rankedUsage.reduce((acc, row) => acc + row.total_amount, 0)
+  const streamShare = tenantTotal && selectedUsage ? Math.round((selectedUsage.total_amount / tenantTotal) * 100) : 0
 
   return (
     <div className="page-stack">
@@ -68,11 +80,53 @@ export default function UsagePage() {
           <span className="inline-pill">Analytics step</span>
           {summary ? <span className="inline-pill">{formatDate(summary.period_start)} → {formatDate(summary.period_end)}</span> : null}
           <span className="inline-pill">{summary?.usage.length ?? 0} active feature streams</span>
+          {selectedUsage ? <span className="inline-pill">{formatCompactNumber(selectedUsage.total_amount)} units on selected stream</span> : null}
         </div>
       </section>
 
-      <section className="split-grid">
-        <div className="card">
+      <section className="analytics-grid">
+        <section className="card chart-card chart-card--usage">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Timeseries</p>
+              <h2>{featureKey ? formatFeatureKey(featureKey) : 'Choose a usage stream'}</h2>
+            </div>
+            {selectedUsage ? <span className="badge badge--success">{selectedUsage.total_amount.toLocaleString()} units this period</span> : null}
+          </div>
+          {loading ? <div className="page-loading">Loading usage chart...</div> : null}
+          {error ? <div className="status-banner status-banner--error">{error}</div> : null}
+          {!loading && featureKey && points.length > 0 ? (
+            <>
+              <div className="chart-wrap chart-wrap--usage">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={points}>
+                    <CartesianGrid stroke="#d7dfd8" strokeDasharray="4 4" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="total_amount" stroke="#136f63" strokeWidth={3} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="chart-footnote">
+                <span>{points.length} daily points in view</span>
+                <span>{streamShare}% of current period volume</span>
+                <span>Last 7 days: {stats.recentSevenDays.toLocaleString()} units</span>
+              </div>
+            </>
+          ) : null}
+          {!loading && featureKey && points.length === 0 ? (
+            <div className="empty-state">No daily points recorded for this feature in the selected period.</div>
+          ) : null}
+          {!loading && !featureKey && (summary?.usage.length ?? 0) === 0 ? (
+            <div className="empty-state">
+              No usage data is available yet. Subscribe to a plan and send a usage event to populate analytics.
+            </div>
+          ) : null}
+        </section>
+
+        <aside className="analytics-sidebar">
+          <div className="card stream-selector-card">
           <div className="section-header">
             <div>
               <p className="eyebrow">Select feature</p>
@@ -90,58 +144,67 @@ export default function UsagePage() {
               ))}
             </select>
           </label>
-        </div>
+          {selectedUsage ? (
+            <div className="stream-selector-card__meta">
+              <strong>{formatFeatureKey(selectedUsage.feature_key)}</strong>
+              <span>{selectedUsage.total_amount.toLocaleString()} units tracked in the current billing cycle.</span>
+            </div>
+          ) : null}
+          </div>
 
-        <div className="stats-grid stats-grid--compact">
+          <div className="card">
+            <div className="section-header">
+              <div>
+                <p className="eyebrow">Top streams</p>
+                <h2>Where usage is concentrating</h2>
+              </div>
+            </div>
+            <div className="stream-list">
+              {rankedUsage.map((item) => {
+                const share = tenantTotal ? Math.round((item.total_amount / tenantTotal) * 100) : 0
+                const active = item.feature_key === featureKey
+                return (
+                  <button
+                    key={item.feature_key}
+                    className={`stream-option${active ? ' stream-option--active' : ''}`}
+                    type="button"
+                    onClick={() => setFeatureKey(item.feature_key)}
+                  >
+                    <div className="stream-option__copy">
+                      <strong>{formatFeatureKey(item.feature_key)}</strong>
+                      <span>{share}% of current tenant volume</span>
+                    </div>
+                    <span className="stream-option__value">{formatCompactNumber(item.total_amount)}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section className="stats-grid analytics-stats-grid">
           <article className="metric-card">
             <span className="metric-label">Total units</span>
             <strong>{stats.total.toLocaleString()}</strong>
+            <span className="muted">For the currently selected stream</span>
           </article>
           <article className="metric-card">
             <span className="metric-label">Peak day</span>
             <strong>{stats.max.toLocaleString()}</strong>
+            <span className="muted">{stats.peakPoint ? formatDate(stats.peakPoint.date) : 'No data yet'}</span>
           </article>
           <article className="metric-card">
             <span className="metric-label">Daily average</span>
             <strong>{stats.avg.toLocaleString()}</strong>
+            <span className="muted">Smoothed over {points.length || 0} observed days</span>
           </article>
-        </div>
+          <article className="metric-card">
+            <span className="metric-label">Last 7 days</span>
+            <strong>{stats.recentSevenDays.toLocaleString()}</strong>
+            <span className="muted">Recent trailing window</span>
+          </article>
       </section>
-
-      {loading ? <div className="page-loading">Loading usage chart...</div> : null}
-      {error ? <div className="status-banner status-banner--error">{error}</div> : null}
-
-      {featureKey && points.length > 0 ? (
-        <section className="card chart-card">
-          <div className="section-header">
-            <div>
-              <p className="eyebrow">Timeseries</p>
-              <h2>{formatFeatureKey(featureKey)}</h2>
-            </div>
-          </div>
-          <div className="chart-wrap">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={points}>
-                <CartesianGrid stroke="#d7dfd8" strokeDasharray="4 4" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="total_amount" stroke="#136f63" strokeWidth={3} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      ) : null}
-
-      {!loading && featureKey && points.length === 0 ? (
-        <div className="empty-state">No daily points recorded for this feature in the selected period.</div>
-      ) : null}
-
-      {!loading && !featureKey && (summary?.usage.length ?? 0) === 0 ? (
-        <div className="empty-state">
-          No usage data is available yet. Subscribe to a plan and send a usage event to populate analytics.
-        </div>
-      ) : null}
     </div>
   )
 }

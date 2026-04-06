@@ -42,6 +42,13 @@ export default function ApiKeysPage() {
     void loadKeys()
   }, [])
 
+  const activeKeys = keys.filter((key) => key.active)
+  const recentlyUsedKeys = activeKeys.filter((key) => {
+    if (!key.last_used_at) return false
+    return Date.now() - new Date(key.last_used_at).getTime() <= 1000 * 60 * 60 * 24 * 2
+  })
+  const revokedKeys = keys.length - activeKeys.length
+
   async function createKey(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -112,6 +119,24 @@ export default function ApiKeysPage() {
       {error ? <div className="status-banner status-banner--error">{error}</div> : null}
       {notice ? <div className="status-banner status-banner--success">{notice}</div> : null}
 
+      <section className="stats-grid stats-grid--compact api-key-stats-grid">
+        <article className="metric-card">
+          <span className="metric-label">Active keys</span>
+          <strong>{activeKeys.length}</strong>
+          <span className="muted">Services currently allowed to send usage</span>
+        </article>
+        <article className="metric-card">
+          <span className="metric-label">Used in 48h</span>
+          <strong>{recentlyUsedKeys.length}</strong>
+          <span className="muted">Warm integrations touching the workspace</span>
+        </article>
+        <article className="metric-card">
+          <span className="metric-label">Revoked</span>
+          <strong>{revokedKeys}</strong>
+          <span className="muted">Archived or retired connections</span>
+        </article>
+      </section>
+
       {createdKey ? (
         <section className="card glow-card">
           <div className="section-header">
@@ -164,6 +189,21 @@ export default function ApiKeysPage() {
             <li>If allowed, perform the action in your product.</li>
             <li>Record the resulting usage event with the same feature key.</li>
           </ol>
+          {keys.length > 0 ? (
+            <div className="key-activity-list">
+              {keys.slice(0, 3).map((key) => (
+                <div key={key.id} className="key-activity-row">
+                  <div className="key-activity-row__copy">
+                    <strong>{key.name}</strong>
+                    <span>{key.last_used_at ? `Last used ${formatDateTime(key.last_used_at)}` : 'No traffic yet'}</span>
+                  </div>
+                  <span className={`badge ${key.active ? 'badge--success' : 'badge--muted'}`}>
+                    {key.active ? 'Connected' : 'Revoked'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       </section>
 

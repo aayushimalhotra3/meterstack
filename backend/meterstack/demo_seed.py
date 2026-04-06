@@ -8,6 +8,7 @@ from .auth import hash_password
 from .jobs.usage_rollup import rebuild_daily_usage_for_range
 
 DEMO_API_KEY = "meterstack_demo_backend_key_2026"
+DEMO_PASSWORD = "DemoPass123!"
 
 
 def _get_or_create_tenant_and_owner(db: Session) -> tuple[Tenant, User]:
@@ -18,9 +19,14 @@ def _get_or_create_tenant_and_owner(db: Session) -> tuple[Tenant, User]:
         db.flush()
     u = db.query(User).filter(User.email == "demo-owner@meterstack.dev").first()
     if not u:
-        u = User(tenant_id=t.id, email="demo-owner@meterstack.dev", hashed_password=hash_password("DemoPass123!"), role=UserRole.owner)
+        u = User(tenant_id=t.id, email="demo-owner@meterstack.dev", hashed_password=hash_password(DEMO_PASSWORD), role=UserRole.owner)
         db.add(u)
         db.flush()
+    else:
+        u.tenant_id = t.id
+        u.role = UserRole.owner
+    u.hashed_password = hash_password(DEMO_PASSWORD)
+    db.add(u)
     return t, u
 
 
@@ -57,6 +63,8 @@ def _get_or_create_plans_features(db: Session) -> tuple[Plan, Plan]:
     projects = _feat("projects_max", "Projects Max")
     api_calls = _feat("api_calls_per_month", "API Calls per Month")
     reports = _feat("reports_per_month", "Reports per Month")
+    workflow_runs = _feat("workflow_runs_per_month", "Workflow Runs per Month")
+    data_exports = _feat("data_exports_per_month", "Data Exports per Month")
 
     def _ensure_pf(plan_id: uuid.UUID, feature_id: uuid.UUID, limit_value: int | None) -> None:
         pf = db.query(PlanFeature).filter(PlanFeature.plan_id == plan_id, PlanFeature.feature_id == feature_id).first()
@@ -69,22 +77,28 @@ def _get_or_create_plans_features(db: Session) -> tuple[Plan, Plan]:
 
     _ensure_pf(starter.id, projects.id, 5)
     _ensure_pf(starter.id, api_calls.id, 10000)
-    _ensure_pf(starter.id, reports.id, 20)
+    _ensure_pf(starter.id, reports.id, 30)
+    _ensure_pf(starter.id, workflow_runs.id, 250)
+    _ensure_pf(starter.id, data_exports.id, 15)
     _ensure_pf(pro.id, projects.id, 50)
     _ensure_pf(pro.id, api_calls.id, 100000)
-    _ensure_pf(pro.id, reports.id, None)
+    _ensure_pf(pro.id, reports.id, 500)
+    _ensure_pf(pro.id, workflow_runs.id, 5000)
+    _ensure_pf(pro.id, data_exports.id, 120)
     db.commit()
     return starter, pro
 
 
 def _ensure_active_subscription(db: Session, tenant: Tenant, plan: Plan) -> None:
     now = datetime.now(timezone.utc)
+    period_start = (now - timedelta(days=29)).replace(hour=0, minute=0, second=0, microsecond=0)
+    period_end = period_start + timedelta(days=30)
     sub = db.query(Subscription).filter(Subscription.tenant_id == tenant.id).first()
     if sub:
         sub.plan_id = plan.id
         sub.status = SubscriptionStatus.active
-        sub.current_period_start = now
-        sub.current_period_end = now + timedelta(days=30)
+        sub.current_period_start = period_start
+        sub.current_period_end = period_end
         sub.cancel_at_period_end = False
         db.add(sub)
         db.commit()
@@ -94,8 +108,8 @@ def _ensure_active_subscription(db: Session, tenant: Tenant, plan: Plan) -> None
         plan_id=plan.id,
         stripe_subscription_id="demo_sub",
         status=SubscriptionStatus.active,
-        current_period_start=now,
-        current_period_end=now + timedelta(days=30),
+        current_period_start=period_start,
+        current_period_end=period_end,
         cancel_at_period_end=False,
     )
     db.add(new_sub)
@@ -105,19 +119,60 @@ def _ensure_active_subscription(db: Session, tenant: Tenant, plan: Plan) -> None
 def _generate_usage(db: Session, tenant: Tenant) -> None:
     end_date = datetime.now(timezone.utc).date()
     start_date = end_date - timedelta(days=29)
-    db.query(UsageEvent).filter(UsageEvent.tenant_id == tenant.id, UsageEvent.occurred_at >= datetime.combine(start_date, datetime.min.time()), UsageEvent.occurred_at <= datetime.combine(end_date, datetime.max.time())).delete()
+    range_start = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
+    range_end = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc)
+    db.query(UsageEvent).filter(
+        UsageEvent.tenant_id == tenant.id,
+        UsageEvent.occurred_at >= range_start,
+        UsageEvent.occurred_at <= range_end,
+    ).delete()
     db.commit()
+
+    def at_hour(day, hour: int, minute: int = 0) -> datetime:
+        return datetime(day.year, day.month, day.day, hour, minute, tzinfo=timezone.utc)
+
     cur = start_date
     idx = 0
     while cur <= end_date:
-        base_calls = 100 + idx * 50
-        burst_reports = 0
-        if idx % 5 == 0:
-            burst_reports = 2
-        ev1 = UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="api_calls_per_month", amount=base_calls, occurred_at=datetime.combine(cur, datetime.min.time()))
-        rows = [ev1]
-        if burst_reports:
-            rows.append(UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="reports_per_month", amount=burst_reports, occurred_at=datetime.combine(cur, datetime.min.time())))
+        weekday = cur.weekday()
+        api_calls = max(
+            1400,
+            1850 + idx * 62 + [0, 120, 210, 160, 110, -260, -330][weekday] + (940 if idx in {5, 12, 18, 26} else 0) - (320 if idx in {8, 21} else 0),
+        )
+        reports = max(
+            2,
+            5 + (idx % 5) + [1, 2, 3, 2, 1, 0, 0][weekday] + (5 if idx in {9, 19, 27} else 0),
+        )
+        workflow_runs = max(
+            26,
+            48 + idx * 3 + [8, 12, 18, 14, 10, -8, -14][weekday] + (28 if idx in {6, 16, 24} else 0),
+        )
+        data_exports = max(
+            1,
+            1 + [1, 1, 2, 1, 1, 0, 0][weekday] + (4 if idx in {7, 14, 22, 28} else 0),
+        )
+
+        rows = [
+            UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="api_calls_per_month", amount=int(api_calls * 0.42), occurred_at=at_hour(cur, 9, 15)),
+            UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="api_calls_per_month", amount=int(api_calls * 0.31), occurred_at=at_hour(cur, 13, 10)),
+            UsageEvent(
+                tenant_id=tenant.id,
+                user_id=None,
+                feature_key="api_calls_per_month",
+                amount=api_calls - int(api_calls * 0.42) - int(api_calls * 0.31),
+                occurred_at=at_hour(cur, 17, 40),
+            ),
+            UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="workflow_runs_per_month", amount=int(workflow_runs * 0.56), occurred_at=at_hour(cur, 11, 5)),
+            UsageEvent(
+                tenant_id=tenant.id,
+                user_id=None,
+                feature_key="workflow_runs_per_month",
+                amount=workflow_runs - int(workflow_runs * 0.56),
+                occurred_at=at_hour(cur, 16, 25),
+            ),
+            UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="reports_per_month", amount=reports, occurred_at=at_hour(cur, 14, 20)),
+            UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="data_exports_per_month", amount=data_exports, occurred_at=at_hour(cur, 18, 5)),
+        ]
         db.add_all(rows)
         db.commit()
         cur = cur + timedelta(days=1)
@@ -126,11 +181,34 @@ def _generate_usage(db: Session, tenant: Tenant) -> None:
 
 
 def _ensure_demo_api_keys(db: Session, tenant: Tenant) -> None:
+    now = datetime.now(timezone.utc)
     keys = {
-        "Production backend": (DEMO_API_KEY, True, datetime.now(timezone.utc) - timedelta(hours=3)),
-        "Old staging worker": ("meterstack_demo_staging_key_2026", False, datetime.now(timezone.utc) - timedelta(days=20)),
+        "Production backend": (
+            DEMO_API_KEY,
+            True,
+            now - timedelta(minutes=18),
+            now - timedelta(days=134),
+        ),
+        "Realtime webhook worker": (
+            "meterstack_demo_realtime_key_2026",
+            True,
+            now - timedelta(hours=6, minutes=20),
+            now - timedelta(days=68),
+        ),
+        "Finance export job": (
+            "meterstack_demo_finance_key_2026",
+            True,
+            now - timedelta(days=1, hours=2),
+            now - timedelta(days=29),
+        ),
+        "Old staging worker": (
+            "meterstack_demo_staging_key_2026",
+            False,
+            now - timedelta(days=20),
+            now - timedelta(days=181),
+        ),
     }
-    for name, (raw_key, active, last_used_at) in keys.items():
+    for name, (raw_key, active, last_used_at, created_at) in keys.items():
         rec = db.query(ApiKey).filter(ApiKey.tenant_id == tenant.id, ApiKey.name == name).first()
         if not rec:
             rec = ApiKey(
@@ -139,6 +217,7 @@ def _ensure_demo_api_keys(db: Session, tenant: Tenant) -> None:
                 key_hash=hash_password(raw_key),
                 key_prefix=raw_key[:12],
                 active=active,
+                created_at=created_at,
                 last_used_at=last_used_at,
             )
             db.add(rec)
@@ -146,6 +225,7 @@ def _ensure_demo_api_keys(db: Session, tenant: Tenant) -> None:
             rec.key_hash = hash_password(raw_key)
             rec.key_prefix = raw_key[:12]
             rec.active = active
+            rec.created_at = created_at
             rec.last_used_at = last_used_at
             db.add(rec)
     db.commit()
