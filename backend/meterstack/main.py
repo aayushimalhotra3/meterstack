@@ -74,6 +74,8 @@ class SignupRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    user: dict | None = None
+    tenant: dict | None = None
 
 
 class LoginRequest(BaseModel):
@@ -102,7 +104,11 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
     db.refresh(user)
 
     token = create_access_token({"user_id": str(user.id), "tenant_id": str(tenant.id)})
-    return TokenResponse(access_token=token)
+    return TokenResponse(
+        access_token=token,
+        user={"id": str(user.id), "email": user.email, "role": user.role.value},
+        tenant={"id": str(tenant.id), "name": tenant.name},
+    )
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -110,8 +116,15 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
     if not user or not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token = create_access_token({"user_id": str(user.id), "tenant_id": str(user.tenant_id)})
-    return TokenResponse(access_token=token)
+    return TokenResponse(
+        access_token=token,
+        user={"id": str(user.id), "email": user.email, "role": user.role.value},
+        tenant={"id": str(tenant.id), "name": tenant.name},
+    )
 
 
 @app.get("/me")

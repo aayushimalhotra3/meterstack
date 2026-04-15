@@ -38,4 +38,20 @@ export async function apiRequest<T = unknown>(path: string, options: RequestInit
   return data as T;
 }
 
+export async function warmApi(): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 20000);
+  try {
+    const res = await fetch(`${API_BASE}/health`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 export { API_BASE };

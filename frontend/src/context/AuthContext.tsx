@@ -44,12 +44,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      const res = await apiRequest<{ access_token: string }>('/auth/login', { method: 'POST', json: { email, password } })
+      const res = await apiRequest<{ access_token: string; user?: UserInfo; tenant?: TenantInfo }>('/auth/login', { method: 'POST', json: { email, password } })
       localStorage.setItem('accessToken', res.access_token)
       setAccessToken(res.access_token)
-      const me = await apiRequest<{ user: UserInfo; tenant: TenantInfo }>('/me')
-      setUser(me.user)
-      setTenant(me.tenant)
+      if (res.user && res.tenant) {
+        setUser(res.user)
+        setTenant(res.tenant)
+      } else {
+        const me = await apiRequest<{ user: UserInfo; tenant: TenantInfo }>('/me')
+        setUser(me.user)
+        setTenant(me.tenant)
+      }
     } catch (error) {
       logout()
       throw error
@@ -61,12 +66,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const signup = useCallback(async (tenantName: string, email: string, password: string) => {
     setIsLoading(true)
     try {
-      const res = await apiRequest<{ access_token: string }>('/auth/signup', { method: 'POST', json: { tenant_name: tenantName, email, password } })
+      const res = await apiRequest<{ access_token: string; user?: UserInfo; tenant?: TenantInfo }>('/auth/signup', { method: 'POST', json: { tenant_name: tenantName, email, password } })
       localStorage.setItem('accessToken', res.access_token)
       setAccessToken(res.access_token)
-      const me = await apiRequest<{ user: UserInfo; tenant: TenantInfo }>('/me')
-      setUser(me.user)
-      setTenant(me.tenant)
+      if (res.user && res.tenant) {
+        setUser(res.user)
+        setTenant(res.tenant)
+      } else {
+        const me = await apiRequest<{ user: UserInfo; tenant: TenantInfo }>('/me')
+        setUser(me.user)
+        setTenant(me.tenant)
+      }
     } catch (error) {
       logout()
       throw error

@@ -4,7 +4,7 @@ from typing import Optional, Dict
 from jose import jwt, JWTError
 import bcrypt
 
-from .config import os as _os  # access env for secret
+from .config import BCRYPT_ROUNDS, os as _os  # access env for secret
 
 SECRET_KEY = _os.getenv("SECRET_KEY", "change-this-secret")
 ALGORITHM = "HS256"
@@ -12,7 +12,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(_os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode()
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)).decode()
 
 
 def verify_password(password: str, hashed: str) -> bool:

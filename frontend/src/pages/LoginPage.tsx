@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { warmApi } from '../api/client'
 
 export default function LoginPage() {
   const { login, accessToken } = useAuth()
@@ -9,6 +10,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [warming, setWarming] = useState(true)
+  const [warmSlow, setWarmSlow] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const slowTimer = window.setTimeout(() => {
+      if (!cancelled) setWarmSlow(true)
+    }, 3500)
+    warmApi().finally(() => {
+      if (cancelled) return
+      window.clearTimeout(slowTimer)
+      setWarming(false)
+    })
+    return () => {
+      cancelled = true
+      window.clearTimeout(slowTimer)
+    }
+  }, [])
+
   if (accessToken) return <Navigate to="/dashboard" replace />
 
   async function onSubmit(e: React.FormEvent) {
@@ -55,12 +75,17 @@ export default function LoginPage() {
               <span>Password</span>
               <input className="input" placeholder="DemoPass123!" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
-            <button className="button" type="submit" disabled={loading}>
-              {loading ? 'Signing in...' : 'Login'}
+            <button className="button" type="submit" disabled={loading || warming}>
+              {warming ? 'Waking demo...' : loading ? 'Signing in...' : 'Login'}
             </button>
           </form>
 
           {error ? <div className="status-banner status-banner--error">{error}</div> : null}
+          {warming && warmSlow ? (
+            <div className="status-banner status-banner--warning">
+              Waking the demo server. Free hosting can take a moment on the first visit.
+            </div>
+          ) : null}
 
           <div className="card auth-subcard">
             <p className="eyebrow">Demo login</p>
