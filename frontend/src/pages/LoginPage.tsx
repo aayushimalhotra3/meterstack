@@ -54,21 +54,23 @@ export default function LoginPage() {
         <div className="auth-lead">
           <h1>Sign in to MeterStack</h1>
           <p className="hero-copy">
-            Tenant billing, entitlements, usage metering, analytics, and API-key workflows in one operating console.
+            Explore a ready-to-use SaaS billing and usage analytics workspace. No setup needed.
           </p>
           <div className="auth-story">
             <div className="auth-story__card">
-              <span className="eyebrow">What you can explore</span>
-              <strong>Plan state, live usage, quotas, and backend integrations</strong>
-            </div>
-            <div className="auth-story__card auth-story__card--accent">
-              <span className="eyebrow">Public demo mode</span>
-              <strong>Switch plans instantly without leaving the app</strong>
+              <span className="eyebrow">Demo workspace</span>
+              <strong>Plans, entitlements, API keys, and usage analytics are already seeded.</strong>
             </div>
           </div>
         </div>
 
         <div className="auth-panel">
+          <div className="auth-panel__intro">
+            <p className="eyebrow">Public demo</p>
+            <h2>Open the demo workspace</h2>
+            <p>The demo credentials are prefilled. Just click the button below.</p>
+          </div>
+
           <form className="form-grid" onSubmit={onSubmit}>
             <label className="field">
               <span>Email</span>
@@ -86,17 +88,9 @@ export default function LoginPage() {
           {error ? <div className="status-banner status-banner--error">{error}</div> : null}
           {warming && warmSlow ? (
             <div className="status-banner status-banner--warning">
-              The demo server may still be waking up, but you can sign in now.
+              Free demo hosting may take a moment on the first sign in.
             </div>
           ) : null}
-
-          <div className="card auth-subcard">
-            <p className="eyebrow">Demo login</p>
-            <div className="demo-credentials">
-              <span>The demo credentials are already filled in.</span>
-              <span>Click sign in to open the workspace.</span>
-            </div>
-          </div>
 
           <div className="auth-footer">
             <span className="muted">Need a fresh tenant?</span>

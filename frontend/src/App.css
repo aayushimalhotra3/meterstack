@@ -945,9 +945,9 @@ h3 {
 }
 
 .auth-card {
-  width: min(980px, 100%);
-  padding: 36px;
-  border-radius: 30px;
+  width: min(880px, 100%);
+  padding: 30px;
+  border-radius: 28px;
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(19, 111, 99, 0.12);
   box-shadow: 0 24px 60px rgba(18, 37, 31, 0.12);
@@ -956,35 +956,53 @@ h3 {
 }
 
 .auth-card--split {
-  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.82fr);
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.82fr);
+  gap: 24px;
 }
 
 .auth-lead {
   display: grid;
   align-content: start;
-  gap: 20px;
+  gap: 18px;
+}
+
+.auth-lead h1 {
+  margin-bottom: 4px;
 }
 
 .auth-panel {
   display: grid;
-  gap: 18px;
-  padding: 24px;
-  border-radius: 24px;
+  gap: 16px;
+  padding: 22px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(19, 111, 99, 0.1);
 }
 
+.auth-panel__intro {
+  display: grid;
+  gap: 6px;
+}
+
+.auth-panel__intro h2,
+.auth-panel__intro p {
+  margin: 0;
+}
+
+.auth-panel__intro p {
+  color: #5f6d68;
+}
+
 .auth-story {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .auth-story__card {
   display: grid;
   gap: 6px;
-  padding: 18px 20px;
-  border-radius: 20px;
+  padding: 16px 18px;
+  border-radius: 18px;
   background: rgba(19, 111, 99, 0.07);
   border: 1px solid rgba(19, 111, 99, 0.08);
 }
