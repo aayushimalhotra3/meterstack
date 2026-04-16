@@ -7,7 +7,7 @@ from .database import engine
 from .models import Base, Tenant, User, UserRole
 from .dependencies import get_db, get_current_user, get_current_tenant
 from .auth import hash_password, verify_password, create_access_token
-from .config import ALLOWED_ORIGINS
+from .config import ALLOWED_ORIGINS, ALLOWED_ORIGIN_REGEX
 from .routes_billing import router as billing_router
 from .routes_entitlements import router as entitlements_router
 from .routes_usage import router as usage_router
@@ -34,6 +34,7 @@ app = FastAPI(lifespan=_lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

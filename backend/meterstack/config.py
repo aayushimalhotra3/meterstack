@@ -41,6 +41,7 @@ ALLOWED_ORIGINS = _parse_csv(os.getenv("ALLOWED_ORIGINS")) or [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+ALLOWED_ORIGIN_REGEX = os.getenv("ALLOWED_ORIGIN_REGEX", r"https://.*\.vercel\.app")
 ENABLE_DEV_ENDPOINTS = _parse_bool("ENABLE_DEV_ENDPOINTS", default=False)
 
 
