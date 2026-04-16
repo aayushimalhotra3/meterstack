@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiRequest } from '../api/client'
 import { formatCompactNumber, formatDate, formatFeatureKey } from '../lib/formatters'
-import { workflowSteps } from '../lib/workflow'
 
 type UsageRow = { feature_key: string; total_amount: number }
 type Subscription = {
@@ -68,22 +67,12 @@ export default function DashboardPage() {
     : totalUsage === 0
       ? { to: '/api-keys', label: 'Create an API key' }
       : { to: '/usage', label: 'Open analytics' }
-  const secondaryAction = !hasPlan
-    ? { to: '/entitlements', label: 'See what plans unlock' }
-    : totalUsage === 0
-      ? { to: '/entitlements', label: 'Review plan access' }
-      : { to: '/api-keys', label: 'Manage API keys' }
   const journeyMessage = !hasPlan
     ? 'Start with Billing to activate the tenant and set the limits the rest of the workspace runs on.'
     : totalUsage === 0
       ? 'Your plan is live. Next, create an API key and send a usage event so analytics has something to display.'
-      : 'Traffic is flowing. Use the overview to monitor the workspace, then jump into analytics when something changes.'
+      : 'This demo workspace is already set up. Start with analytics to see the usage story, then inspect billing, access, and API keys.'
   const quickStats = [
-    {
-      label: 'Current plan',
-      value: sub?.plan?.name ?? '—',
-      meta: sub?.status ?? 'No active subscription',
-    },
     {
       label: 'Metered volume',
       value: totalUsage.toLocaleString(),
@@ -100,6 +89,26 @@ export default function DashboardPage() {
       meta: entitlements.length ? `${entitlements.length.toLocaleString()} plan-backed capabilities` : 'Plan-backed capability surface',
     },
   ]
+  const nextSteps = [
+    {
+      to: '/usage',
+      label: 'Analytics',
+      title: 'See usage trends',
+      copy: 'Daily charts, stream ranking, averages, and peak-day behavior.',
+    },
+    {
+      to: '/api-keys',
+      label: 'Integration',
+      title: 'Review API keys',
+      copy: 'See which backend services are connected to the demo workspace.',
+    },
+    {
+      to: '/billing',
+      label: 'Billing',
+      title: 'Inspect the plan',
+      copy: 'View the active subscription and switch plans in mock mode.',
+    },
+  ]
 
   if (loading) return <div className="page-loading">Loading workspace overview...</div>
   if (error) return <div className="status-banner status-banner--error">{error}</div>
@@ -114,8 +123,8 @@ export default function DashboardPage() {
             <Link className="button" to={primaryAction.to}>
               {primaryAction.label}
             </Link>
-            <Link className="button button--secondary" to={secondaryAction.to}>
-              {secondaryAction.label}
+            <Link className="button button--secondary" to="/api-keys">
+              Review API keys
             </Link>
           </div>
         </div>
@@ -128,11 +137,7 @@ export default function DashboardPage() {
           <div className="hero-side-panel__value">{sub?.plan?.name ?? 'No plan selected'}</div>
           <div className="hero-side-panel__details">
             <div>
-              <span className="metric-label">Period</span>
-              <strong>{summary ? `${periodDays} day cycle` : 'No billing period'}</strong>
-            </div>
-            <div>
-              <span className="metric-label">Feature streams</span>
+              <span className="metric-label">Usage streams</span>
               <strong>{rankedUsage.length}</strong>
             </div>
             <div>
@@ -140,29 +145,14 @@ export default function DashboardPage() {
               <strong>{formatCompactNumber(totalUsage)}</strong>
             </div>
             <div>
-              <span className="metric-label">Peak stream</span>
-              <strong>{topFeature ? formatFeatureKey(topFeature.feature_key) : '—'}</strong>
+              <span className="metric-label">Period</span>
+              <strong>{summary ? `${periodDays} days` : 'No billing period'}</strong>
             </div>
           </div>
         </aside>
       </section>
 
-      <section className="workflow-grid">
-        {workflowSteps.map((step) => (
-          <Link
-            key={step.to}
-            className={`workflow-card${primaryAction.to === step.to ? ' workflow-card--recommended' : ''}`}
-            to={step.to}
-          >
-            <span className="eyebrow">Step {String(step.order).padStart(2, '0')}</span>
-            <h3>{step.title}</h3>
-            <p>{step.description}</p>
-            <span className="workflow-card__cta">{primaryAction.to === step.to ? 'Recommended next step' : 'Open page'}</span>
-          </Link>
-        ))}
-      </section>
-
-      <section className="stats-grid">
+      <section className="stats-grid stats-grid--compact dashboard-stats-grid">
         {quickStats.map((stat) => (
           <article key={stat.label} className="metric-card metric-card--dashboard">
             <span className="metric-label">{stat.label}</span>
@@ -208,33 +198,52 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="card">
+        <div className="card dashboard-guide-card">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Coverage</p>
-              <h2>Entitlement footprint</h2>
+              <p className="eyebrow">Start here</p>
+              <h2>Three useful places to click</h2>
+            </div>
+          </div>
+          <div className="guide-list">
+            {nextSteps.map((step) => (
+              <Link className="guide-row" key={step.to} to={step.to}>
+                <span className="guide-row__label">{step.label}</span>
+                <span className="guide-row__copy">
+                  <strong>{step.title}</strong>
+                  <small>{step.copy}</small>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="dashboard-support-grid">
+        <section className="card">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Plan access</p>
+              <h2>What this tenant can use</h2>
             </div>
             <Link className="button button--secondary" to="/entitlements">
-              View entitlements
+              Details
             </Link>
           </div>
           {entitlements.length === 0 ? (
             <div className="empty-state">No entitlements yet. Choose a plan to activate feature access.</div>
           ) : (
-            <div className="chip-grid chip-grid--dashboard">
-              {entitlements.map((entitlement) => (
-                <div key={entitlement.feature_key} className="feature-chip">
-                  <strong>{formatFeatureKey(entitlement.feature_key)}</strong>
-                  <small>{entitlement.feature_key}</small>
-                  <span>{entitlement.limit_value === null ? 'Unlimited' : `${entitlement.limit_value.toLocaleString()} cap`}</span>
+            <div className="entitlement-summary-list">
+              {entitlements.slice(0, 5).map((entitlement) => (
+                <div key={entitlement.feature_key} className="entitlement-summary-row">
+                  <span>{formatFeatureKey(entitlement.feature_key)}</span>
+                  <strong>{entitlement.limit_value === null ? 'Unlimited' : `${formatCompactNumber(entitlement.limit_value)} cap`}</strong>
                 </div>
               ))}
+              {entitlements.length > 5 ? <span className="muted">+{entitlements.length - 5} more entitlements</span> : null}
             </div>
           )}
-        </div>
-      </section>
-
-      <section className="dashboard-lower-grid">
+        </section>
         <section className="card">
           <div className="section-header">
             <div>
@@ -263,32 +272,6 @@ export default function DashboardPage() {
             {sub?.cancel_at_period_end ? (
               <div className="status-banner status-banner--warning">This subscription is scheduled to cancel at period end.</div>
             ) : null}
-          </div>
-        </section>
-
-        <section className="card quick-actions-card">
-          <div className="section-header">
-            <div>
-              <p className="eyebrow">Shortcuts</p>
-              <h2>What operators usually do next</h2>
-            </div>
-          </div>
-          <div className="action-grid">
-            <Link className="action-tile" to="/usage">
-              <span className="eyebrow">Analytics</span>
-              <strong>Inspect daily usage</strong>
-              <span>Track spikes, heavy features, and period totals.</span>
-            </Link>
-            <Link className="action-tile" to="/api-keys">
-              <span className="eyebrow">Integration</span>
-              <strong>Issue service keys</strong>
-              <span>Connect a backend, worker, or scheduled job.</span>
-            </Link>
-            <Link className="action-tile" to="/entitlements">
-              <span className="eyebrow">Access</span>
-              <strong>Review plan limits</strong>
-              <span>See exactly what the tenant can and cannot do.</span>
-            </Link>
           </div>
         </section>
       </section>

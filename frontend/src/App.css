@@ -435,8 +435,12 @@ h3 {
 }
 
 .metric-card--dashboard {
-  min-height: 132px;
+  min-height: 118px;
   align-content: start;
+}
+
+.dashboard-stats-grid {
+  max-width: 1080px;
 }
 
 .split-grid {
@@ -447,14 +451,14 @@ h3 {
 
 .dashboard-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.95fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.9fr);
+  gap: 22px;
 }
 
-.dashboard-lower-grid {
+.dashboard-support-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
-  gap: 20px;
+  gap: 22px;
 }
 
 .workflow-grid {
@@ -639,7 +643,7 @@ h3 {
 
 .usage-rail__item {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .usage-rail__row {
@@ -674,7 +678,7 @@ h3 {
 
 .usage-rail__track {
   width: 100%;
-  height: 10px;
+  height: 8px;
   border-radius: 999px;
   background: rgba(19, 111, 99, 0.08);
   overflow: hidden;
@@ -779,6 +783,76 @@ h3 {
 .quick-actions-card {
   display: grid;
   gap: 8px;
+}
+
+.dashboard-guide-card {
+  align-content: start;
+}
+
+.guide-list {
+  display: grid;
+  gap: 10px;
+}
+
+.guide-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 14px;
+  border-radius: 18px;
+  color: inherit;
+  background: rgba(19, 111, 99, 0.05);
+  border: 1px solid rgba(19, 111, 99, 0.08);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.guide-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(19, 111, 99, 0.16);
+  background: rgba(19, 111, 99, 0.08);
+}
+
+.guide-row__label {
+  color: #0d5d53;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.guide-row__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.guide-row__copy small {
+  color: #66756f;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.entitlement-summary-list {
+  display: grid;
+  gap: 8px;
+}
+
+.entitlement-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(19, 111, 99, 0.09);
+}
+
+.entitlement-summary-row:last-of-type {
+  border-bottom: 0;
+}
+
+.entitlement-summary-row strong {
+  color: #18312c;
+  white-space: nowrap;
 }
 
 .analytics-grid {
@@ -1050,7 +1124,7 @@ h3 {
   .split-grid,
   .analytics-grid,
   .dashboard-overview-grid,
-  .dashboard-lower-grid,
+  .dashboard-support-grid,
   .auth-card--split {
     grid-template-columns: 1fr;
   }
@@ -1115,5 +1189,9 @@ h3 {
 
   .button--compact {
     justify-self: stretch;
+  }
+
+  .guide-row {
+    grid-template-columns: 1fr;
   }
 }
