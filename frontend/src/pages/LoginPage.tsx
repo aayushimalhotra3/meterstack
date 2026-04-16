@@ -3,11 +3,14 @@ import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { warmApi } from '../api/client'
 
+const DEMO_EMAIL = 'demo-owner@meterstack.dev'
+const DEMO_PASSWORD = 'DemoPass123!'
+
 export default function LoginPage() {
   const { login, accessToken } = useAuth()
   const nav = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState(DEMO_EMAIL)
+  const [password, setPassword] = useState(DEMO_PASSWORD)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [warming, setWarming] = useState(true)
@@ -75,23 +78,23 @@ export default function LoginPage() {
               <span>Password</span>
               <input className="input" placeholder="DemoPass123!" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
-            <button className="button" type="submit" disabled={loading || warming}>
-              {warming ? 'Waking demo...' : loading ? 'Signing in...' : 'Login'}
+            <button className="button" type="submit" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign in to demo'}
             </button>
           </form>
 
           {error ? <div className="status-banner status-banner--error">{error}</div> : null}
           {warming && warmSlow ? (
             <div className="status-banner status-banner--warning">
-              Waking the demo server. Free hosting can take a moment on the first visit.
+              The demo server may still be waking up, but you can sign in now.
             </div>
           ) : null}
 
           <div className="card auth-subcard">
             <p className="eyebrow">Demo login</p>
             <div className="demo-credentials">
-              <span>Email: demo-owner@meterstack.dev</span>
-              <span>Password: DemoPass123!</span>
+              <span>The demo credentials are already filled in.</span>
+              <span>Click sign in to open the workspace.</span>
             </div>
           </div>
 
