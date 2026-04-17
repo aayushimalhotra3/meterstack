@@ -21,6 +21,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false)
       return
     }
+    if (user && tenant) {
+      setIsLoading(false)
+      return
+    }
     let cancelled = false
     setIsLoading(true)
     ;(async () => {
@@ -39,7 +43,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [accessToken, logout])
+  }, [accessToken, logout, tenant, user])
 
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true)

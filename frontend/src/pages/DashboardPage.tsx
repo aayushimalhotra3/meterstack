@@ -23,20 +23,20 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [b, e] = await Promise.all([
+        const [b, e, usageResult] = await Promise.allSettled([
           apiRequest<Subscription>('/billing/subscription'),
           apiRequest<Entitlement[]>('/entitlements/'),
+          apiRequest<{ period_start: string; period_end: string; usage: UsageRow[] }>('/analytics/summary'),
         ])
-        setSub(b)
-        setEntitlements(e)
-        try {
-          const usageSummary = await apiRequest<{ period_start: string; period_end: string; usage: UsageRow[] }>('/analytics/summary')
-          setSummary(usageSummary)
-        } catch (analyticsError: unknown) {
-          const analyticsMessage = analyticsError instanceof Error ? analyticsError.message : ''
-          if (analyticsMessage !== 'no_active_subscription') {
-            throw analyticsError
-          }
+        if (b.status === 'fulfilled') setSub(b.value)
+        else throw b.reason
+        if (e.status === 'fulfilled') setEntitlements(e.value)
+        else throw e.reason
+        if (usageResult.status === 'fulfilled') {
+          setSummary(usageResult.value)
+        } else {
+          const analyticsMessage = usageResult.reason instanceof Error ? usageResult.reason.message : ''
+          if (analyticsMessage !== 'no_active_subscription') throw usageResult.reason
         }
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Unknown error'
