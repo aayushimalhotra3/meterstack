@@ -100,11 +100,11 @@ export default function UsagePage() {
               <div className="chart-wrap chart-wrap--usage">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={points}>
-                    <CartesianGrid stroke="#d7dfd8" strokeDasharray="4 4" />
+                    <CartesianGrid stroke="#ded6dc" strokeDasharray="4 4" />
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
-                    <Line type="monotone" dataKey="total_amount" stroke="#136f63" strokeWidth={3} dot={false} />
+                    <Line type="monotone" dataKey="total_amount" stroke="#6f3b68" strokeWidth={3} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

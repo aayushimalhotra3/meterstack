@@ -2,10 +2,10 @@
   font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #16211d;
+  color: #2b2530;
   background:
     radial-gradient(circle at top left, rgba(232, 159, 91, 0.12), transparent 30%),
-    radial-gradient(circle at top right, rgba(19, 111, 99, 0.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(111, 59, 104, 0.16), transparent 28%),
     linear-gradient(180deg, #f8f4ec 0%, #f0ece2 100%);
 
   font-synthesis: none;
@@ -16,11 +16,11 @@
 
 a {
   font-weight: 500;
-  color: #136f63;
+  color: #6f3b68;
   text-decoration: inherit;
 }
 a:hover {
-  color: #0c564d;
+  color: #563052;
 }
 
 body {
