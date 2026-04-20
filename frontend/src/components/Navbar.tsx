@@ -1,6 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { getNextWorkflowStep, getWorkflowStep, workflowSteps } from '../lib/workflow'
+import { startGuidedTour } from '../lib/tour'
 
 export default function Navbar() {
   const { user, tenant, logout } = useAuth()
@@ -8,6 +9,7 @@ export default function Navbar() {
   const nav = useNavigate()
   const currentStep = getWorkflowStep(location.pathname)
   const nextStep = getNextWorkflowStep(location.pathname)
+  const currentOrder = currentStep?.order ?? 0
 
   return (
     <header className="topbar">
@@ -51,15 +53,20 @@ export default function Navbar() {
                 <span className="identity-label">Signed in</span>
                 <strong>{user?.email ?? 'Unknown user'}</strong>
               </div>
-              <button
-                className="button button--ghost button--compact"
-                onClick={() => {
-                  logout()
-                  nav('/login')
-                }}
-              >
-                Sign out
-              </button>
+              <div className="workspace-card__actions">
+                <button className="button button--ghost button--compact" type="button" onClick={startGuidedTour}>
+                  Start tour
+                </button>
+                <button
+                  className="button button--ghost button--compact"
+                  onClick={() => {
+                    logout()
+                    nav('/login')
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
           </div>
 
@@ -67,7 +74,7 @@ export default function Navbar() {
             <NavLink
               to="/dashboard"
               end
-              className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}
+              className={({ isActive }) => `nav-tab nav-tab--overview${isActive ? ' nav-tab--active' : ''}`}
             >
               <span className="nav-tab__index">00</span>
               <span className="nav-tab__copy">
@@ -80,7 +87,10 @@ export default function Navbar() {
               <NavLink
                 key={step.to}
                 to={step.to}
-                className={({ isActive }) => `nav-tab${isActive ? ' nav-tab--active' : ''}`}
+                className={({ isActive }) => {
+                  const stepState = isActive ? 'current' : step.order < currentOrder ? 'complete' : 'upcoming'
+                  return `nav-tab nav-tab--${stepState}${isActive ? ' nav-tab--active' : ''}`
+                }}
               >
                 <span className="nav-tab__index">{String(step.order).padStart(2, '0')}</span>
                 <span className="nav-tab__copy">

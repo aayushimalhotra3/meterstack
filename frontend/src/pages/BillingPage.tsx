@@ -107,15 +107,17 @@ export default function BillingPage() {
           <div className="detail-list">
             <div className="detail-row">
               <span>Plan</span>
-              <strong>{sub?.plan?.name ?? '—'}</strong>
+              <strong>{sub?.plan?.name ?? 'No plan'}</strong>
             </div>
             <div className="detail-row">
               <span>Status</span>
-              <strong>{sub?.status ?? '—'}</strong>
+              <strong>{sub?.status ?? 'No status'}</strong>
             </div>
             <div className="detail-row">
               <span>Period</span>
-              <strong>{sub?.current_period_start ? `${formatDate(sub.current_period_start)} → ${formatDate(sub.current_period_end)}` : '—'}</strong>
+              <strong>
+                {sub?.current_period_start ? `${formatDate(sub.current_period_start)} → ${formatDate(sub.current_period_end)}` : 'No period'}
+              </strong>
             </div>
           </div>
           {sub?.cancel_at_period_end ? (
@@ -135,7 +137,7 @@ export default function BillingPage() {
         </div>
       </section>
 
-      <section className="plans-grid">
+      <section className="plans-grid" data-tour="billing-plan">
         {plans.map((plan) => (
           <PlanCard key={plan.id} plan={plan} onCheckout={startCheckout} checkoutLoading={checkoutLoading} />
         ))}

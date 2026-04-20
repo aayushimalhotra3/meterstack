@@ -56,12 +56,14 @@ export default function DashboardPage() {
   }, null)
   const rankedUsage = [...(summary?.usage ?? [])].sort((a, b) => b.total_amount - a.total_amount)
   const usageMax = rankedUsage[0]?.total_amount ?? 1
+  const topFeatureShare = totalUsage && topFeature ? Math.round((topFeature.total_amount / totalUsage) * 100) : 0
   const periodDays = summary
     ? Math.max(
         1,
         Math.round((new Date(summary.period_end).getTime() - new Date(summary.period_start).getTime()) / (1000 * 60 * 60 * 24)) + 1,
       )
     : 0
+  const averageDailyUsage = periodDays ? Math.round(totalUsage / periodDays) : 0
   const primaryAction = !hasPlan
     ? { to: '/billing', label: 'Choose a plan' }
     : totalUsage === 0
@@ -76,17 +78,34 @@ export default function DashboardPage() {
     {
       label: 'Metered volume',
       value: totalUsage.toLocaleString(),
-      meta: periodDays ? `About ${Math.round(totalUsage / periodDays).toLocaleString()} units per day` : 'Units tracked this billing period',
+      meta: periodDays ? `${averageDailyUsage.toLocaleString()} units per day on average` : 'Units tracked this billing period',
     },
     {
       label: 'Top feature',
-      value: topFeature ? formatFeatureKey(topFeature.feature_key) : '—',
-      meta: topFeature ? `${formatCompactNumber(topFeature.total_amount)} units this period` : 'No usage yet',
+      value: topFeature ? formatFeatureKey(topFeature.feature_key) : 'No usage yet',
+      meta: topFeature ? `${topFeatureShare}% of period volume` : 'No usage yet',
     },
     {
       label: 'Active streams',
       value: rankedUsage.length.toLocaleString(),
       meta: entitlements.length ? `${entitlements.length.toLocaleString()} plan-backed capabilities` : 'Plan-backed capability surface',
+    },
+  ]
+  const heroSignals = [
+    {
+      label: 'Plan state',
+      value: sub?.plan?.name ?? 'No plan',
+      meta: sub?.status ?? 'Waiting',
+    },
+    {
+      label: 'Daily pace',
+      value: averageDailyUsage ? formatCompactNumber(averageDailyUsage) : 'No usage',
+      meta: periodDays ? `${periodDays} day period` : 'No period yet',
+    },
+    {
+      label: 'Dominant stream',
+      value: topFeature ? formatFeatureKey(topFeature.feature_key) : 'Pending',
+      meta: topFeature ? `${topFeatureShare}% share` : 'Needs events',
     },
   ]
   const nextSteps = [
@@ -117,7 +136,7 @@ export default function DashboardPage() {
       <section className="hero-card hero-card--dashboard">
         <div className="hero-main">
           <p className="eyebrow">Workspace overview</p>
-          <h1>Run the commercial layer of your product from one place.</h1>
+          <h1>Command center for billing, access, and usage.</h1>
           <p className="hero-copy">{journeyMessage}</p>
           <div className="hero-actions">
             <Link className="button" to={primaryAction.to}>
@@ -127,6 +146,15 @@ export default function DashboardPage() {
               Review API keys
             </Link>
           </div>
+          <div className="hero-signal-grid" aria-label="Workspace signals">
+            {heroSignals.map((signal) => (
+              <div className="hero-signal-card" key={signal.label}>
+                <span className="metric-label">{signal.label}</span>
+                <strong>{signal.value}</strong>
+                <small>{signal.meta}</small>
+              </div>
+            ))}
+          </div>
         </div>
 
         <aside className="hero-side-panel">
@@ -135,6 +163,11 @@ export default function DashboardPage() {
             <span className="badge badge--success">{sub?.status ?? 'No plan'}</span>
           </div>
           <div className="hero-side-panel__value">{sub?.plan?.name ?? 'No plan selected'}</div>
+          <div className="hero-side-panel__spotlight">
+            <span className="metric-label">Top stream</span>
+            <strong>{topFeature ? formatFeatureKey(topFeature.feature_key) : 'Waiting for usage'}</strong>
+            <span>{topFeature ? `${topFeatureShare}% of current period volume` : 'Usage will appear here after events arrive.'}</span>
+          </div>
           <div className="hero-side-panel__details">
             <div>
               <span className="metric-label">Usage streams</span>
@@ -149,12 +182,19 @@ export default function DashboardPage() {
               <strong>{summary ? `${periodDays} days` : 'No billing period'}</strong>
             </div>
           </div>
+          <div className="hero-side-panel__signal">
+            <span>Demo readiness</span>
+            <strong>{hasPlan && totalUsage > 0 ? 'Ready to show' : 'Needs setup'}</strong>
+          </div>
         </aside>
       </section>
 
       <section className="stats-grid stats-grid--compact dashboard-stats-grid">
-        {quickStats.map((stat) => (
-          <article key={stat.label} className="metric-card metric-card--dashboard">
+        {quickStats.map((stat, index) => (
+          <article
+            key={stat.label}
+            className={`metric-card metric-card--dashboard${index === 0 ? ' metric-card--featured' : ''}`}
+          >
             <span className="metric-label">{stat.label}</span>
             <strong>{stat.value}</strong>
             <span className="muted">{stat.meta}</span>
@@ -175,23 +215,29 @@ export default function DashboardPage() {
           </div>
           {rankedUsage.length > 0 ? (
             <div className="usage-rail">
-              {rankedUsage.map((item) => (
-                <div key={item.feature_key} className="usage-rail__item">
-                  <div className="usage-rail__row">
-                    <div className="usage-rail__label-group">
-                      <strong>{formatFeatureKey(item.feature_key)}</strong>
-                      <span>{item.feature_key}</span>
+              {rankedUsage.map((item, index) => {
+                const share = totalUsage ? Math.round((item.total_amount / totalUsage) * 100) : 0
+                return (
+                  <div key={item.feature_key} className="usage-rail__item">
+                    <div className="usage-rail__row">
+                      <div className="usage-rail__label-group">
+                        <span className="usage-rail__rank">{String(index + 1).padStart(2, '0')}</span>
+                        <div>
+                          <strong>{formatFeatureKey(item.feature_key)}</strong>
+                          <span>{share}% of total volume</span>
+                        </div>
+                      </div>
+                      <span className="usage-rail__value">{item.total_amount.toLocaleString()}</span>
                     </div>
-                    <span className="usage-rail__value">{item.total_amount.toLocaleString()}</span>
+                    <div className="usage-rail__track">
+                      <div
+                        className="usage-rail__fill"
+                        style={{ width: `${Math.max((item.total_amount / usageMax) * 100, 8)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="usage-rail__track">
-                    <div
-                      className="usage-rail__fill"
-                      style={{ width: `${Math.max((item.total_amount / usageMax) * 100, 8)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <div className="empty-state">No usage recorded for this billing period yet.</div>
@@ -213,6 +259,7 @@ export default function DashboardPage() {
                   <strong>{step.title}</strong>
                   <small>{step.copy}</small>
                 </span>
+                <span className="guide-row__action">View</span>
               </Link>
             ))}
           </div>
@@ -220,7 +267,7 @@ export default function DashboardPage() {
       </section>
 
       <section className="dashboard-support-grid">
-        <section className="card">
+        <section className="card dashboard-support-card dashboard-support-card--access">
           <div className="section-header">
             <div>
               <p className="eyebrow">Plan access</p>
@@ -244,7 +291,7 @@ export default function DashboardPage() {
             </div>
           )}
         </section>
-        <section className="card">
+        <section className="card dashboard-support-card dashboard-support-card--billing">
           <div className="section-header">
             <div>
               <p className="eyebrow">Subscription</p>
@@ -261,12 +308,12 @@ export default function DashboardPage() {
             </div>
             <div className="detail-row">
               <span>Status</span>
-              <strong>{sub?.status ?? '—'}</strong>
+              <strong>{sub?.status ?? 'No status'}</strong>
             </div>
             <div className="detail-row">
               <span>Current period</span>
               <strong>
-                {summary ? `${formatDate(summary.period_start)} → ${formatDate(summary.period_end)}` : '—'}
+                {summary ? `${formatDate(summary.period_start)} → ${formatDate(summary.period_end)}` : 'No period'}
               </strong>
             </div>
             {sub?.cancel_at_period_end ? (

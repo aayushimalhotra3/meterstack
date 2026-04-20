@@ -57,7 +57,7 @@ export default function EntitlementsPage() {
       ) : null}
 
       {!loading && rows.length > 0 ? (
-        <section className="card">
+        <section className="card" data-tour="entitlements-review">
           <div className="table-card">
             <table className="data-table">
               <thead>

@@ -95,7 +95,7 @@ export default function ApiKeysPage() {
       <section className="hero-card">
         <div>
           <p className="eyebrow">Step 03 of 04</p>
-          <h1>API Keys</h1>
+          <h1>Operational API keys for live usage capture.</h1>
           <p className="hero-copy">
             This is where the workspace becomes operational. Create a key for your backend or job runner, then use it
             to check quotas and record usage.
@@ -120,7 +120,7 @@ export default function ApiKeysPage() {
       {notice ? <div className="status-banner status-banner--success">{notice}</div> : null}
 
       <section className="stats-grid stats-grid--compact api-key-stats-grid">
-        <article className="metric-card">
+        <article className="metric-card metric-card--featured">
           <span className="metric-label">Active keys</span>
           <strong>{activeKeys.length}</strong>
           <span className="muted">Services currently allowed to send usage</span>
@@ -157,8 +157,8 @@ export default function ApiKeysPage() {
         </section>
       ) : null}
 
-      <section className="split-grid">
-        <div className="card">
+      <section className="split-grid api-key-layout">
+        <div className="card api-key-create-card" data-tour="api-key-create">
           <div className="section-header">
             <div>
               <p className="eyebrow">Create</p>
@@ -181,7 +181,7 @@ export default function ApiKeysPage() {
           </form>
         </div>
 
-        <div className="card">
+        <div className="card integration-card">
           <p className="eyebrow">Integration pattern</p>
           <h2>Typical client flow</h2>
           <ol className="steps">
@@ -207,7 +207,7 @@ export default function ApiKeysPage() {
         </div>
       </section>
 
-      <section className="card">
+      <section className="card key-inventory-card">
         <div className="section-header">
           <div>
             <p className="eyebrow">Inventory</p>
@@ -243,7 +243,7 @@ export default function ApiKeysPage() {
                     <td>{formatDateTime(key.last_used_at)}</td>
                     <td>
                       {key.active ? (
-                        <button className="button button--ghost" onClick={() => void revokeKey(key.id)}>
+                        <button className="button button--ghost button--compact" onClick={() => void revokeKey(key.id)}>
                           Revoke
                         </button>
                       ) : (
