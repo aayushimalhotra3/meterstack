@@ -158,7 +158,7 @@ export default function ApiKeysPage() {
       ) : null}
 
       <section className="split-grid api-key-layout">
-        <div className="card api-key-create-card" data-tour="api-key-create">
+        <div className="card api-key-create-card">
           <div className="section-header">
             <div>
               <p className="eyebrow">Create</p>

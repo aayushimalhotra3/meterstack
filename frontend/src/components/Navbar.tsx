@@ -1,12 +1,10 @@
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { getNextWorkflowStep, getWorkflowStep, workflowSteps } from '../lib/workflow'
-import { startGuidedTour } from '../lib/tour'
 
 export default function Navbar() {
-  const { user, tenant, logout } = useAuth()
+  const { user, tenant } = useAuth()
   const location = useLocation()
-  const nav = useNavigate()
   const currentStep = getWorkflowStep(location.pathname)
   const nextStep = getNextWorkflowStep(location.pathname)
   const currentOrder = currentStep?.order ?? 0
@@ -25,7 +23,7 @@ export default function Navbar() {
               </div>
             </div>
 
-            <div className="topbar__summary">
+            <div className="topbar__summary" data-overview-tour="welcome">
               <span className="eyebrow">{currentStep ? `Step 0${currentStep.order} of 04` : 'Suggested flow'}</span>
               <strong>{currentStep ? currentStep.title : 'Start with Billing, then move left to right through the setup flow.'}</strong>
               <span className="topbar__summary-copy">
@@ -45,32 +43,24 @@ export default function Navbar() {
             </div>
 
             <div className="workspace-card workspace-card--compact">
+              <span className="workspace-card__demo-badge">Seeded public demo</span>
               <div className="workspace-card__row">
                 <span className="identity-label">Tenant</span>
-                <strong>{tenant?.name ?? 'Workspace'}</strong>
+                <strong>{tenant?.name ?? 'MeterStack Demo'}</strong>
               </div>
               <div className="workspace-card__row">
-                <span className="identity-label">Signed in</span>
-                <strong>{user?.email ?? 'Unknown user'}</strong>
+                <span className="identity-label">Demo owner</span>
+                <strong>{user?.email ?? 'demo-owner@meterstack.dev'}</strong>
               </div>
               <div className="workspace-card__actions">
-                <button className="button button--ghost button--compact" type="button" onClick={startGuidedTour}>
-                  Start tour
-                </button>
-                <button
-                  className="button button--ghost button--compact"
-                  onClick={() => {
-                    logout()
-                    nav('/login')
-                  }}
-                >
-                  Sign out
-                </button>
+                <NavLink className="button button--ghost button--compact" to="/dashboard">
+                  How it works
+                </NavLink>
               </div>
             </div>
           </div>
 
-          <nav className="nav-strip">
+          <nav className="nav-strip" data-overview-tour="integration">
             <NavLink
               to="/dashboard"
               end
@@ -87,6 +77,7 @@ export default function Navbar() {
               <NavLink
                 key={step.to}
                 to={step.to}
+                data-overview-tour={step.to === '/billing' ? 'billing' : step.to === '/usage' ? 'analytics' : undefined}
                 className={({ isActive }) => {
                   const stepState = isActive ? 'current' : step.order < currentOrder ? 'complete' : 'upcoming'
                   return `nav-tab nav-tab--${stepState}${isActive ? ' nav-tab--active' : ''}`

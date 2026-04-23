@@ -137,7 +137,7 @@ export default function BillingPage() {
         </div>
       </section>
 
-      <section className="plans-grid" data-tour="billing-plan">
+      <section className="plans-grid">
         {plans.map((plan) => (
           <PlanCard key={plan.id} plan={plan} onCheckout={startCheckout} checkoutLoading={checkoutLoading} />
         ))}

@@ -176,6 +176,18 @@ h3 {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
+.workspace-card__demo-badge {
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(111, 59, 104, 0.11);
+  border: 1px solid rgba(111, 59, 104, 0.12);
+  color: #563151;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
 .workspace-card--compact {
   min-width: 0;
 }
@@ -293,6 +305,14 @@ h3 {
   font-weight: 700;
 }
 
+.inline-pill--demo {
+  padding: 6px 10px;
+  background:
+    linear-gradient(180deg, rgba(111, 59, 104, 0.13), rgba(232, 159, 91, 0.11)),
+    rgba(255, 255, 255, 0.74);
+  color: #563151;
+}
+
 .identity-label,
 .eyebrow,
 .metric-label {
@@ -302,69 +322,69 @@ h3 {
   color: #786d76;
 }
 
-.tour-layer {
+.overview-tour-layer {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 90;
   pointer-events: none;
 }
 
-.tour-spotlight {
+.overview-tour-spotlight {
   position: fixed;
   border-radius: 24px;
-  border: 1px solid rgba(255, 250, 243, 0.9);
+  border: 1px solid rgba(255, 250, 243, 0.92);
   box-shadow:
-    0 0 0 9999px rgba(36, 25, 39, 0.34),
-    0 22px 60px rgba(45, 34, 48, 0.24),
-    inset 0 0 0 2px rgba(232, 159, 91, 0.28);
+    0 0 0 9999px rgba(34, 24, 38, 0.18),
+    0 24px 64px rgba(45, 34, 48, 0.24),
+    inset 0 0 0 2px rgba(232, 159, 91, 0.26);
   transition:
-    top 220ms ease,
-    left 220ms ease,
-    width 220ms ease,
-    height 220ms ease;
+    top 180ms ease,
+    left 180ms ease,
+    width 180ms ease,
+    height 180ms ease;
 }
 
-.tour-card {
+.overview-tour-card {
   position: fixed;
   display: grid;
   gap: 12px;
   padding: 18px;
-  border-radius: 22px;
+  border-radius: 23px;
   background:
-    radial-gradient(circle at 8% 0%, rgba(232, 159, 91, 0.2), transparent 32%),
-    linear-gradient(180deg, rgba(255, 252, 247, 0.97), rgba(247, 240, 230, 0.95));
-  border: 1px solid rgba(111, 59, 104, 0.18);
+    radial-gradient(circle at 10% 0%, rgba(232, 159, 91, 0.2), transparent 34%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(247, 240, 230, 0.96));
+  border: 1px solid rgba(111, 59, 104, 0.2);
   box-shadow:
-    0 26px 70px rgba(45, 34, 48, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+    0 26px 72px rgba(45, 34, 48, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.76);
   pointer-events: auto;
-  animation: tour-card-in 180ms ease both;
+  animation: overview-tour-card-in 180ms ease both;
 }
 
-.tour-card__header,
-.tour-card__actions {
+.overview-tour-card__header,
+.overview-tour-card__actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.tour-card h2,
-.tour-card p {
+.overview-tour-card h2,
+.overview-tour-card p {
   margin: 0;
 }
 
-.tour-card h2 {
+.overview-tour-card h2 {
   color: #271d2b;
-  font-size: 1.35rem;
+  font-size: 1.34rem;
 }
 
-.tour-card p {
+.overview-tour-card p {
   color: #544953;
   line-height: 1.5;
 }
 
-.tour-card__skip {
+.overview-tour-card__skip {
   border: 0;
   padding: 6px 10px;
   border-radius: 999px;
@@ -374,26 +394,32 @@ h3 {
   font-weight: 800;
 }
 
-.tour-progress {
+.overview-tour-progress {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 7px;
 }
 
-.tour-progress__dot {
+.overview-tour-progress__dot {
   height: 4px;
   border-radius: 999px;
   background: rgba(111, 59, 104, 0.12);
 }
 
-.tour-progress__dot--active {
+.overview-tour-progress__dot--active {
   background: linear-gradient(90deg, #6f3b68, #e89f5b);
 }
 
-@keyframes tour-card-in {
+.overview-tour-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@keyframes overview-tour-card-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(6px) scale(0.985);
   }
 
   to {
@@ -471,6 +497,17 @@ h3 {
   gap: 9px;
 }
 
+.hero-kicker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.hero-kicker-row .eyebrow {
+  margin: 0;
+}
+
 .hero-card h1 {
   margin: 2px 0 6px;
   font-size: clamp(1.9rem, 3vw, 3.55rem);
@@ -484,6 +521,18 @@ h3 {
   color: #51464f;
   font-size: 0.92rem;
   line-height: 1.55;
+}
+
+.hero-demo-note {
+  width: fit-content;
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 14px;
+  background: rgba(111, 59, 104, 0.08);
+  border: 1px solid rgba(111, 59, 104, 0.1);
+  color: #5e515b;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .hero-meta {
@@ -615,7 +664,7 @@ h3 {
 .metric-card,
 .plan-card,
 .nav-tab,
-.guide-row,
+.workflow-step-card,
 .stream-option,
 .action-tile {
   will-change: transform;
@@ -1158,6 +1207,83 @@ h3 {
   color: #8b5a26;
 }
 
+.demo-loading-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(232, 159, 91, 0.18), transparent 32%),
+    radial-gradient(circle at 80% 10%, rgba(111, 59, 104, 0.17), transparent 36%),
+    #f7f1e8;
+}
+
+.demo-loading-card {
+  width: min(540px, 100%);
+  display: grid;
+  gap: 13px;
+  padding: 28px;
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(252, 245, 236, 0.86)),
+    rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(111, 59, 104, 0.16);
+  box-shadow:
+    0 24px 70px rgba(45, 34, 48, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.demo-loading-card h1,
+.demo-loading-card p {
+  margin: 0;
+}
+
+.demo-loading-card h1 {
+  color: #271d2b;
+  font-size: clamp(2rem, 5vw, 3.1rem);
+  line-height: 0.98;
+}
+
+.demo-loading-card p:not(.eyebrow) {
+  color: #5d515a;
+  line-height: 1.6;
+}
+
+.demo-loading-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.demo-loading-steps span {
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(111, 59, 104, 0.22), rgba(232, 159, 91, 0.24));
+  animation: demo-loading-pulse 1.15s ease-in-out infinite;
+}
+
+.demo-loading-steps span:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.demo-loading-steps span:nth-child(3) {
+  animation-delay: 280ms;
+}
+
+@keyframes demo-loading-pulse {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scaleX(0.72);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
 .chart-card {
   padding-bottom: 16px;
 }
@@ -1191,23 +1317,36 @@ h3 {
   border-color: rgba(111, 59, 104, 0.16);
 }
 
-.guide-list {
+.workflow-guide-card {
   display: grid;
+  gap: 12px;
+}
+
+.workflow-guide-card__intro {
+  margin: 0;
+  color: #5d515a;
+  line-height: 1.5;
+}
+
+.workflow-step-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.guide-row {
+.workflow-step-card {
+  min-height: 154px;
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: start;
-  padding: 13px;
-  border-radius: 15px;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 17px;
   color: inherit;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(111, 59, 104, 0.05)),
-    rgba(111, 59, 104, 0.045);
-  border: 1px solid rgba(111, 59, 104, 0.1);
+    radial-gradient(circle at 100% 0%, rgba(232, 159, 91, 0.13), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(111, 59, 104, 0.055)),
+    rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(111, 59, 104, 0.12);
   transition:
     transform 160ms ease,
     border-color 160ms ease,
@@ -1215,34 +1354,40 @@ h3 {
     box-shadow 160ms ease;
 }
 
-.guide-row:hover {
+.workflow-step-card:hover {
   transform: translateY(-2px);
   border-color: rgba(111, 59, 104, 0.18);
   background: rgba(255, 255, 255, 0.74);
   box-shadow: 0 14px 28px rgba(45, 34, 48, 0.08);
 }
 
-.guide-row__label {
+.workflow-step-card__step {
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(111, 59, 104, 0.11);
   color: #60345b;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.guide-row__copy {
-  display: grid;
-  gap: 4px;
+.workflow-step-card strong {
+  color: #302634;
+  font-size: 1.04rem;
+  line-height: 1.18;
 }
 
-.guide-row__copy small {
+.workflow-step-card small {
   color: #6d626b;
   font-size: 0.86rem;
   line-height: 1.4;
 }
 
-.guide-row__action {
-  align-self: center;
+.workflow-step-card__action {
+  width: fit-content;
+  margin-top: auto;
   padding: 6px 10px;
   border-radius: 999px;
   background: rgba(111, 59, 104, 0.12);
@@ -1569,96 +1714,6 @@ h3 {
   font-size: 0.9rem;
 }
 
-.auth-shell {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 32px 16px;
-}
-
-.auth-card {
-  width: min(880px, 100%);
-  padding: 30px;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(111, 59, 104, 0.12);
-  box-shadow: 0 24px 60px rgba(45, 34, 48, 0.12);
-  display: grid;
-  gap: 20px;
-}
-
-.auth-card--split {
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.82fr);
-  gap: 24px;
-}
-
-.auth-lead {
-  display: grid;
-  align-content: start;
-  gap: 18px;
-}
-
-.auth-lead h1 {
-  margin-bottom: 4px;
-}
-
-.auth-panel {
-  display: grid;
-  gap: 16px;
-  padding: 22px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(111, 59, 104, 0.1);
-}
-
-.auth-panel__intro {
-  display: grid;
-  gap: 6px;
-}
-
-.auth-panel__intro h2,
-.auth-panel__intro p {
-  margin: 0;
-}
-
-.auth-panel__intro p {
-  color: #6d626b;
-}
-
-.auth-story {
-  display: grid;
-  gap: 12px;
-}
-
-.auth-story__card {
-  display: grid;
-  gap: 6px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: rgba(111, 59, 104, 0.07);
-  border: 1px solid rgba(111, 59, 104, 0.08);
-}
-
-.auth-story__card--accent {
-  background: linear-gradient(135deg, rgba(232, 159, 91, 0.16), rgba(111, 59, 104, 0.12));
-}
-
-.auth-subcard {
-  padding: 18px;
-}
-
-.demo-credentials {
-  display: grid;
-  gap: 6px;
-  color: #51464f;
-}
-
-.auth-footer {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
 .result-card {
   min-height: 320px;
 }
@@ -1683,8 +1738,7 @@ h3 {
   .analytics-grid,
   .dashboard-overview-grid,
   .dashboard-support-grid,
-  .api-key-layout,
-  .auth-card--split {
+    .api-key-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1724,16 +1778,11 @@ h3 {
 
   .workspace-card,
   .hero-card,
-  .card,
-  .auth-card {
+  .card {
     padding: 22px;
   }
 
-  .hero-card {
-    flex-direction: column;
-  }
-
-  .auth-footer,
+  .hero-card,
   .page-actions,
   .hero-actions,
   .hero-side-panel__details {
@@ -1754,7 +1803,8 @@ h3 {
     justify-self: stretch;
   }
 
-  .guide-row {
+  .workflow-step-grid,
+  .workflow-step-card {
     grid-template-columns: 1fr;
   }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiRequest } from '../api/client'
+import OverviewTour from '../components/OverviewTour'
 import { formatCompactNumber, formatDate, formatFeatureKey } from '../lib/formatters'
 
 type UsageRow = { feature_key: string; total_amount: number }
@@ -19,6 +20,7 @@ export default function DashboardPage() {
   const [entitlements, setEntitlements] = useState<Entitlement[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [tourRestartSignal, setTourRestartSignal] = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -108,24 +110,34 @@ export default function DashboardPage() {
       meta: topFeature ? `${topFeatureShare}% share` : 'Needs events',
     },
   ]
-  const nextSteps = [
+  const workflowGuide = [
+    {
+      step: 'Step 01',
+      to: '/billing',
+      label: 'Open Billing',
+      title: 'Choose a plan',
+      copy: 'Activate the workspace period and set the quota model for the tenant.',
+    },
+    {
+      step: 'Step 02',
+      to: '/entitlements',
+      label: 'Open Access',
+      title: 'Review entitlements',
+      copy: 'Confirm which features are available and what limits apply.',
+    },
+    {
+      step: 'Step 03',
+      to: '/api-keys',
+      label: 'Open Integrations',
+      title: 'Create an API key',
+      copy: 'Connect backend services so they can check limits and report usage.',
+    },
     {
       to: '/usage',
-      label: 'Analytics',
-      title: 'See usage trends',
-      copy: 'Daily charts, stream ranking, averages, and peak-day behavior.',
-    },
-    {
-      to: '/api-keys',
-      label: 'Integration',
-      title: 'Review API keys',
-      copy: 'See which backend services are connected to the demo workspace.',
-    },
-    {
-      to: '/billing',
-      label: 'Billing',
-      title: 'Inspect the plan',
-      copy: 'View the active subscription and switch plans in mock mode.',
+      step: 'Step 04',
+      label: 'Open Analytics',
+      title: 'Inspect usage',
+      copy: 'See usage events roll up into trends, totals, and stream-level insight.',
     },
   ]
 
@@ -135,9 +147,13 @@ export default function DashboardPage() {
     <div className="page-stack dashboard-stack">
       <section className="hero-card hero-card--dashboard">
         <div className="hero-main">
-          <p className="eyebrow">Workspace overview</p>
+          <div className="hero-kicker-row">
+            <p className="eyebrow">Workspace overview</p>
+            <span className="inline-pill inline-pill--demo">Seeded sample workspace</span>
+          </div>
           <h1>Command center for billing, access, and usage.</h1>
           <p className="hero-copy">{journeyMessage}</p>
+          <p className="hero-demo-note">Demo workspace with seeded usage, billing, access, and integration data.</p>
           <div className="hero-actions">
             <Link className="button" to={primaryAction.to}>
               {primaryAction.label}
@@ -145,6 +161,9 @@ export default function DashboardPage() {
             <Link className="button button--secondary" to="/api-keys">
               Review API keys
             </Link>
+            <button className="button button--ghost" type="button" onClick={() => setTourRestartSignal((value) => value + 1)}>
+              Start tour again
+            </button>
           </div>
           <div className="hero-signal-grid" aria-label="Workspace signals">
             {heroSignals.map((signal) => (
@@ -244,22 +263,23 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="card dashboard-guide-card">
+        <div className="card dashboard-guide-card workflow-guide-card" id="demo-workflow">
           <div className="section-header">
             <div>
-              <p className="eyebrow">Start here</p>
-              <h2>Three useful places to click</h2>
+              <p className="eyebrow">How MeterStack works</p>
+              <h2>A four-step usage billing workflow</h2>
             </div>
           </div>
-          <div className="guide-list">
-            {nextSteps.map((step) => (
-              <Link className="guide-row" key={step.to} to={step.to}>
-                <span className="guide-row__label">{step.label}</span>
-                <span className="guide-row__copy">
-                  <strong>{step.title}</strong>
-                  <small>{step.copy}</small>
-                </span>
-                <span className="guide-row__action">View</span>
+          <p className="workflow-guide-card__intro">
+            This overview stays stable. Use the cards below when you are ready to inspect each part of the demo.
+          </p>
+          <div className="workflow-step-grid">
+            {workflowGuide.map((step) => (
+              <Link className="workflow-step-card" key={step.to} to={step.to}>
+                <span className="workflow-step-card__step">{step.step}</span>
+                <strong>{step.title}</strong>
+                <small>{step.copy}</small>
+                <span className="workflow-step-card__action">{step.label}</span>
               </Link>
             ))}
           </div>
@@ -322,6 +342,7 @@ export default function DashboardPage() {
           </div>
         </section>
       </section>
+      <OverviewTour restartSignal={tourRestartSignal} />
     </div>
   )
 }

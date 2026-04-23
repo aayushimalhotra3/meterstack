@@ -95,7 +95,7 @@ export default function UsagePage() {
       </section>
 
       <section className="analytics-grid">
-        <section className="card chart-card chart-card--usage" data-tour="analytics-chart">
+        <section className="card chart-card chart-card--usage">
           <div className="section-header">
             <div>
               <p className="eyebrow">Timeseries</p>

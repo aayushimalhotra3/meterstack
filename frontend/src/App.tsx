@@ -1,12 +1,9 @@
 import './App.css'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Suspense, lazy, type ReactNode } from 'react'
-import ProtectedRoute from './components/ProtectedRoute'
 import AppShell from './components/AppShell'
-import { useAuth } from './hooks/useAuth'
+import DemoSessionGate from './components/DemoSessionGate'
 
-const LoginPage = lazy(() => import('./pages/LoginPage'))
-const SignupPage = lazy(() => import('./pages/SignupPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const UsagePage = lazy(() => import('./pages/UsagePage'))
 const BillingPage = lazy(() => import('./pages/BillingPage'))
@@ -16,17 +13,12 @@ const BillingSuccessPage = lazy(() => import('./pages/BillingSuccessPage'))
 const BillingCancelPage = lazy(() => import('./pages/BillingCancelPage'))
 const BillingMockSuccessPage = lazy(() => import('./pages/BillingMockSuccessPage'))
 
-function ProtectedPage({ children }: { children: ReactNode }) {
+function DemoPage({ children }: { children: ReactNode }) {
   return (
-    <ProtectedRoute>
+    <DemoSessionGate>
       <AppShell>{children}</AppShell>
-    </ProtectedRoute>
+    </DemoSessionGate>
   )
-}
-
-function LandingPage() {
-  const { accessToken } = useAuth()
-  return <Navigate to={accessToken ? '/dashboard' : '/login'} replace />
 }
 
 function App() {
@@ -34,74 +26,81 @@ function App() {
     <BrowserRouter>
       <Suspense fallback={<div className="page-loading">Loading page...</div>}>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          <Route
+            path="/"
+            element={
+              <DemoPage>
+                <DashboardPage />
+              </DemoPage>
+            }
+          />
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/signup" element={<Navigate to="/" replace />} />
           <Route
             path="/dashboard"
             element={
-              <ProtectedPage>
+              <DemoPage>
                 <DashboardPage />
-              </ProtectedPage>
+              </DemoPage>
             }
           />
           <Route
             path="/usage"
             element={
-              <ProtectedPage>
+              <DemoPage>
                 <UsagePage />
-              </ProtectedPage>
+              </DemoPage>
             }
           />
           <Route
             path="/billing"
             element={
-              <ProtectedPage>
+              <DemoPage>
                 <BillingPage />
-              </ProtectedPage>
+              </DemoPage>
             }
           />
           <Route
             path="/billing/success"
             element={
-              <ProtectedPage>
+              <DemoPage>
                 <BillingSuccessPage />
-              </ProtectedPage>
+              </DemoPage>
             }
           />
           <Route
             path="/billing/cancel"
             element={
-              <ProtectedPage>
+              <DemoPage>
                 <BillingCancelPage />
-              </ProtectedPage>
+              </DemoPage>
             }
           />
           <Route
             path="/billing/mock-success"
             element={
-              <ProtectedPage>
+              <DemoPage>
                 <BillingMockSuccessPage />
-              </ProtectedPage>
+              </DemoPage>
             }
           />
           <Route
             path="/api-keys"
             element={
-              <ProtectedPage>
+              <DemoPage>
                 <ApiKeysPage />
-              </ProtectedPage>
+              </DemoPage>
             }
           />
           <Route
             path="/entitlements"
             element={
-              <ProtectedPage>
+              <DemoPage>
                 <EntitlementsPage />
-              </ProtectedPage>
+              </DemoPage>
             }
           />
-          <Route path="*" element={<LandingPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
