@@ -23,7 +23,7 @@ export default function Navbar() {
               </div>
             </div>
 
-            <div className="topbar__summary" data-overview-tour="welcome">
+            <div className="topbar__summary">
               <span className="eyebrow">{currentStep ? `Step 0${currentStep.order} of 04` : 'Suggested flow'}</span>
               <strong>{currentStep ? currentStep.title : 'Start with Billing, then move left to right through the setup flow.'}</strong>
               <span className="topbar__summary-copy">

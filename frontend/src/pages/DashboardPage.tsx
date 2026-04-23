@@ -176,7 +176,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <aside className="hero-side-panel">
+        <aside className="hero-side-panel" data-overview-tour="welcome">
           <div className="hero-side-panel__header">
             <span className="eyebrow">Live workspace state</span>
             <span className="badge badge--success">{sub?.status ?? 'No plan'}</span>

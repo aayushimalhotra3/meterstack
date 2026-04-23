@@ -325,7 +325,7 @@ h3 {
 .overview-tour-layer {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 1000;
   pointer-events: none;
 }
 

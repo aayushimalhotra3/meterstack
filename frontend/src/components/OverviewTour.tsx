@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 
 const TOUR_STORAGE_KEY = 'meterstack-overview-tour-seen'
@@ -110,11 +111,13 @@ export default function OverviewTour({ restartSignal = 0 }: { restartSignal?: nu
 
   const spotlightStyle = useMemo<CSSProperties | undefined>(() => {
     if (!targetRect) return undefined
+    const left = clamp(targetRect.left - 8, 8, window.innerWidth - 16)
+    const top = clamp(targetRect.top - 8, 8, window.innerHeight - 16)
     return {
-      top: Math.max(targetRect.top - 8, 8),
-      left: Math.max(targetRect.left - 8, 8),
-      width: Math.min(targetRect.width + 16, window.innerWidth - 16),
-      height: Math.min(targetRect.height + 16, window.innerHeight - 16),
+      top,
+      left,
+      width: Math.min(targetRect.width + 16, window.innerWidth - left - 8),
+      height: Math.min(targetRect.height + 16, window.innerHeight - top - 8),
     }
   }, [targetRect])
 
@@ -124,16 +127,44 @@ export default function OverviewTour({ restartSignal = 0 }: { restartSignal?: nu
       return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width }
     }
 
-    const left = clamp(targetRect.right + 18, 16, window.innerWidth - width - 16)
-    const top = clamp(targetRect.top, 16, Math.max(16, window.innerHeight - 330))
-    const shouldFloatLeft = targetRect.right + width + 40 > window.innerWidth
+    const estimatedHeight = isLastStep ? 360 : 300
+    const rightSpace = window.innerWidth - targetRect.right - 18
+    const leftSpace = targetRect.left - 18
+
+    if (rightSpace >= width) {
+      return {
+        left: targetRect.right + 18,
+        top: clamp(targetRect.top, 16, Math.max(16, window.innerHeight - estimatedHeight - 16)),
+        width,
+      }
+    }
+
+    if (leftSpace >= width) {
+      return {
+        left: targetRect.left - width - 18,
+        top: clamp(targetRect.top, 16, Math.max(16, window.innerHeight - estimatedHeight - 16)),
+        width,
+      }
+    }
+
+    const centeredLeft = clamp(targetRect.left + targetRect.width / 2 - width / 2, 16, window.innerWidth - width - 16)
+    const belowTop = targetRect.bottom + 16
+    const aboveTop = targetRect.top - estimatedHeight - 16
+
+    if (belowTop + estimatedHeight <= window.innerHeight - 16) {
+      return { left: centeredLeft, top: belowTop, width }
+    }
+
+    if (aboveTop >= 16) {
+      return { left: centeredLeft, top: aboveTop, width }
+    }
 
     return {
-      left: shouldFloatLeft ? clamp(targetRect.left - width - 18, 16, window.innerWidth - width - 16) : left,
-      top,
+      left: centeredLeft,
+      top: clamp(targetRect.top, 16, Math.max(16, window.innerHeight - estimatedHeight - 16)),
       width,
     }
-  }, [targetRect])
+  }, [isLastStep, targetRect])
 
   if (!isActive) return null
 
@@ -147,7 +178,7 @@ export default function OverviewTour({ restartSignal = 0 }: { restartSignal?: nu
     setTargetRect(measureTarget(tourSteps[nextStepIndex].target))
   }
 
-  return (
+  const tour = (
     <div className="overview-tour-layer" role="dialog" aria-label="MeterStack overview tour" aria-live="polite">
       {spotlightStyle ? <div className="overview-tour-spotlight" style={spotlightStyle} /> : null}
       <section className="overview-tour-card" style={cardStyle}>
@@ -194,4 +225,6 @@ export default function OverviewTour({ restartSignal = 0 }: { restartSignal?: nu
       </section>
     </div>
   )
+
+  return createPortal(tour, document.body)
 }
