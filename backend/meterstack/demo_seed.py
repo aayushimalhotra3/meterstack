@@ -1,14 +1,18 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal, engine
-from .models import ApiKey, Tenant, User, UserRole, Plan, BillingInterval, Feature, PlanFeature, Subscription, SubscriptionStatus, UsageEvent
+from .models import ApiKey, Tenant, User, UserRole, Plan, BillingInterval, Feature, PlanFeature, Subscription, SubscriptionStatus, UsageEvent, UsageDaily
 from .auth import hash_password
 from .jobs.usage_rollup import rebuild_daily_usage_for_range
 
 DEMO_API_KEY = "meterstack_demo_backend_key_2026"
 DEMO_PASSWORD = "DemoPass123!"
+SEEDED_DAYS = 30
+SEEDED_FEATURE_COUNT = 4
+SEEDED_EVENTS_PER_DAY = 7
 
 
 def _get_or_create_tenant_and_owner(db: Session) -> tuple[Tenant, User]:
@@ -25,7 +29,6 @@ def _get_or_create_tenant_and_owner(db: Session) -> tuple[Tenant, User]:
     else:
         u.tenant_id = t.id
         u.role = UserRole.owner
-    u.hashed_password = hash_password(DEMO_PASSWORD)
     db.add(u)
     return t, u
 
@@ -116,9 +119,52 @@ def _ensure_active_subscription(db: Session, tenant: Tenant, plan: Plan) -> None
     db.commit()
 
 
-def _generate_usage(db: Session, tenant: Tenant) -> None:
+def _seed_window() -> tuple[date, date]:
     end_date = datetime.now(timezone.utc).date()
-    start_date = end_date - timedelta(days=29)
+    start_date = end_date - timedelta(days=SEEDED_DAYS - 1)
+    return start_date, end_date
+
+
+def _usage_seed_is_current(db: Session, tenant: Tenant, start_date, end_date) -> bool:
+    range_start = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
+    range_end = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc)
+    usage_count, first_seen, last_seen = (
+        db.query(
+            func.count(UsageEvent.id),
+            func.min(UsageEvent.occurred_at),
+            func.max(UsageEvent.occurred_at),
+        )
+        .filter(
+            UsageEvent.tenant_id == tenant.id,
+            UsageEvent.occurred_at >= range_start,
+            UsageEvent.occurred_at <= range_end,
+        )
+        .one()
+    )
+    if usage_count < SEEDED_DAYS * SEEDED_EVENTS_PER_DAY:
+        return False
+    if not first_seen or not last_seen:
+        return False
+    if first_seen.date() > start_date or last_seen.date() < end_date:
+        return False
+
+    daily_row_count = (
+        db.query(func.count(UsageDaily.id))
+        .filter(
+            UsageDaily.tenant_id == tenant.id,
+            UsageDaily.date >= start_date,
+            UsageDaily.date <= end_date,
+        )
+        .scalar()
+    )
+    return daily_row_count >= SEEDED_DAYS * SEEDED_FEATURE_COUNT
+
+
+def _generate_usage(db: Session, tenant: Tenant) -> None:
+    start_date, end_date = _seed_window()
+    if _usage_seed_is_current(db, tenant, start_date, end_date):
+        return
+
     range_start = datetime(start_date.year, start_date.month, start_date.day, tzinfo=timezone.utc)
     range_end = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=timezone.utc)
     db.query(UsageEvent).filter(
@@ -133,6 +179,7 @@ def _generate_usage(db: Session, tenant: Tenant) -> None:
 
     cur = start_date
     idx = 0
+    rows_to_insert: list[UsageEvent] = []
     while cur <= end_date:
         weekday = cur.weekday()
         api_calls = max(
@@ -152,7 +199,7 @@ def _generate_usage(db: Session, tenant: Tenant) -> None:
             1 + [1, 1, 2, 1, 1, 0, 0][weekday] + (4 if idx in {7, 14, 22, 28} else 0),
         )
 
-        rows = [
+        rows_to_insert.extend([
             UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="api_calls_per_month", amount=int(api_calls * 0.42), occurred_at=at_hour(cur, 9, 15)),
             UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="api_calls_per_month", amount=int(api_calls * 0.31), occurred_at=at_hour(cur, 13, 10)),
             UsageEvent(
@@ -172,11 +219,11 @@ def _generate_usage(db: Session, tenant: Tenant) -> None:
             ),
             UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="reports_per_month", amount=reports, occurred_at=at_hour(cur, 14, 20)),
             UsageEvent(tenant_id=tenant.id, user_id=None, feature_key="data_exports_per_month", amount=data_exports, occurred_at=at_hour(cur, 18, 5)),
-        ]
-        db.add_all(rows)
-        db.commit()
+        ])
         cur = cur + timedelta(days=1)
         idx += 1
+    db.add_all(rows_to_insert)
+    db.commit()
     rebuild_daily_usage_for_range(db, start_date, end_date)
 
 
@@ -222,7 +269,6 @@ def _ensure_demo_api_keys(db: Session, tenant: Tenant) -> None:
             )
             db.add(rec)
         else:
-            rec.key_hash = hash_password(raw_key)
             rec.key_prefix = raw_key[:12]
             rec.active = active
             rec.created_at = created_at

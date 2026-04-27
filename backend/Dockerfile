@@ -5,5 +5,6 @@ RUN pip install --no-cache-dir -e /app/backend
 WORKDIR /app/backend
 ENV PYTHONPATH=/app/backend
 ENV BCRYPT_ROUNDS=10
+ENV ACCESS_TOKEN_EXPIRE_MINUTES=43200
 EXPOSE 8000
 CMD ["sh", "-c", "alembic -c alembic.ini upgrade head && python -m meterstack.demo_seed && uvicorn meterstack.main:app --host 0.0.0.0 --port 8000"]
