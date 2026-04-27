@@ -1249,6 +1249,12 @@ h3 {
   line-height: 1.6;
 }
 
+.demo-loading-hint {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
 .demo-loading-steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

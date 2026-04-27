@@ -68,10 +68,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [accessToken, logout, storeIdentity, tenant, user])
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, signal?: AbortSignal) => {
     setIsLoading(true)
     try {
-      const res = await apiRequest<{ access_token: string; user?: UserInfo; tenant?: TenantInfo }>('/auth/login', { method: 'POST', json: { email, password } })
+      const res = await apiRequest<{ access_token: string; user?: UserInfo; tenant?: TenantInfo }>('/auth/login', {
+        method: 'POST',
+        json: { email, password },
+        signal,
+      })
       localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, res.access_token)
       setAccessToken(res.access_token)
       if (res.user && res.tenant) {

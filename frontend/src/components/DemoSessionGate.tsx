@@ -3,8 +3,17 @@ import { useAuth } from '../hooks/useAuth'
 
 const DEMO_EMAIL = 'demo-owner@meterstack.dev'
 const DEMO_PASSWORD = 'DemoPass123!'
+const DEMO_TIMEOUT_MESSAGE = "Backend is waking up - this takes about 60 seconds on Render's free tier"
 
-function DemoWorkspaceLoading({ error, onRetry }: { error: string | null; onRetry: () => void }) {
+function DemoWorkspaceLoading({
+  error,
+  onRetry,
+  slowLoad,
+}: {
+  error: string | null
+  onRetry: () => void
+  slowLoad: boolean
+}) {
   return (
     <div className="demo-loading-shell">
       <section className="demo-loading-card">
@@ -13,14 +22,21 @@ function DemoWorkspaceLoading({ error, onRetry }: { error: string | null; onRetr
         <p>
           Loading seeded billing, access, integration, and usage data so you can explore the product immediately.
         </p>
-        <div className="demo-loading-steps" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
+        {slowLoad && !error ? (
+          <p className="demo-loading-hint">
+            Backend is waking up from sleep - this takes about 60 seconds on Render&apos;s free tier. Hang tight.
+          </p>
+        ) : (
+          <div className="demo-loading-steps" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
         {error ? (
           <div className="status-banner status-banner--warning">
-            Demo data is still waking up. Refresh in a moment or try again.
+            Backend timed out or is unavailable (Render free tier sleeps after 15 min of inactivity and the free
+            Postgres expires after 30 days). Click "Try again" - if it just spun up, the next attempt will work.
             <button className="button button--secondary button--compact" type="button" onClick={onRetry}>
               Try again
             </button>
@@ -35,6 +51,7 @@ export default function DemoSessionGate({ children }: { children: ReactNode }) {
   const { accessToken, isLoading, login } = useAuth()
   const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [slowLoad, setSlowLoad] = useState(false)
   const startedAttempt = useRef<number | null>(null)
 
   useEffect(() => {
@@ -42,17 +59,45 @@ export default function DemoSessionGate({ children }: { children: ReactNode }) {
     if (startedAttempt.current === attempt) return
 
     let cancelled = false
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => controller.abort(), 15_000)
+    const slowTimer = window.setTimeout(() => {
+      if (!cancelled) setSlowLoad(true)
+    }, 8_000)
+    let wakeTimeoutId: number | undefined
     startedAttempt.current = attempt
 
-    login(DEMO_EMAIL, DEMO_PASSWORD)
+    const wakeTimeoutPromise = new Promise<never>((_, reject) => {
+      wakeTimeoutId = window.setTimeout(() => reject(new Error(DEMO_TIMEOUT_MESSAGE)), 15_000)
+    })
+
+    Promise.race([
+      login(DEMO_EMAIL, DEMO_PASSWORD, controller.signal),
+      wakeTimeoutPromise,
+    ])
       .catch((err: unknown) => {
         if (cancelled) return
-        const message = err instanceof Error ? err.message : 'Demo workspace unavailable'
+        const message =
+          err instanceof DOMException && err.name === 'AbortError'
+            ? DEMO_TIMEOUT_MESSAGE
+            : err instanceof Error
+              ? err.message
+              : 'Demo workspace unavailable'
         setError(message)
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId)
+        window.clearTimeout(slowTimer)
+        if (wakeTimeoutId) window.clearTimeout(wakeTimeoutId)
+        if (!cancelled) setSlowLoad(false)
       })
 
     return () => {
       cancelled = true
+      controller.abort()
+      window.clearTimeout(timeoutId)
+      window.clearTimeout(slowTimer)
+      if (wakeTimeoutId) window.clearTimeout(wakeTimeoutId)
     }
   }, [accessToken, attempt, isLoading, login])
 
@@ -61,8 +106,10 @@ export default function DemoSessionGate({ children }: { children: ReactNode }) {
   return (
     <DemoWorkspaceLoading
       error={error}
+      slowLoad={slowLoad}
       onRetry={() => {
         setError(null)
+        setSlowLoad(false)
         setAttempt((value) => value + 1)
       }}
     />
